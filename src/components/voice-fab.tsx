@@ -53,13 +53,12 @@ export const VoiceFab = ({ onPress }: VoiceFabProps) => {
   }, [revealProgress]);
 
   const labelAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(revealProgress.value, [0, 0.14, 1], [0, 1, 1]),
+    opacity: interpolate(revealProgress.value, [0, 0.14, 0.92, 1], [0, 1, 1, 0]),
     transform: [
       {
-        translateX: interpolate(revealProgress.value, [0, 1], [28, 0]),
+        translateX: interpolate(revealProgress.value, [0, 1], [24, 0]),
       },
     ],
-    width: interpolate(revealProgress.value, [0, 1], [0, 112]),
   }));
 
   const micAnimatedStyle = useAnimatedStyle(() => ({
@@ -75,15 +74,19 @@ export const VoiceFab = ({ onPress }: VoiceFabProps) => {
 
   return (
     <View className="absolute bottom-36 right-5 h-16 items-end justify-center">
-      <Animated.View
+      <View
         pointerEvents="none"
-        style={labelAnimatedStyle}
-        className="absolute right-14 top-2 overflow-hidden"
+        className="absolute right-20 top-5 h-6 w-36 items-end justify-center overflow-hidden"
       >
-        <View className="rounded-full bg-surface px-4 py-3 shadow-subtle">
-          <AppText variant="caption">Voice note</AppText>
-        </View>
-      </Animated.View>
+        <Animated.View style={labelAnimatedStyle}>
+          <AppText
+            numberOfLines={1}
+            className="font-display text-sm tracking-[0.18em]"
+          >
+            VOICE NOTE
+          </AppText>
+        </Animated.View>
+      </View>
 
       <Pressable
         accessibilityHint="Opens voice capture and turns speech into a new task draft."
