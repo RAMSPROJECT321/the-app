@@ -1,5 +1,3 @@
-import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
-
 import { APP_CONFIG } from "@/constants/app";
 import type {
   SpeechProvider,
@@ -19,18 +17,62 @@ type SpeechErrorEvent = {
   message: string;
 };
 
+type ExpoSpeechRecognitionModuleType =
+  typeof import("expo-speech-recognition").ExpoSpeechRecognitionModule;
+
+let speechModule: ExpoSpeechRecognitionModuleType | null = null;
+let speechModuleLoadFailed = false;
+
+const getSpeechModule = () => {
+  if (speechModuleLoadFailed) {
+    return null;
+  }
+
+  if (speechModule) {
+    return speechModule;
+  }
+
+  try {
+    const speechPackage = require("expo-speech-recognition") as typeof import("expo-speech-recognition");
+    speechModule = speechPackage.ExpoSpeechRecognitionModule;
+    return speechModule;
+  } catch (error) {
+    speechModuleLoadFailed = true;
+    console.warn("Voice recognition module is unavailable in this build.", error);
+    return null;
+  }
+};
+
 class ExpoSpeechProvider implements SpeechProvider {
   isAvailable() {
-    return ExpoSpeechRecognitionModule.isRecognitionAvailable();
+    const module = getSpeechModule();
+
+    if (!module) {
+      return false;
+    }
+
+    return module.isRecognitionAvailable();
   }
 
   async requestPermissionsAsync() {
-    const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    const module = getSpeechModule();
+
+    if (!module) {
+      return false;
+    }
+
+    const result = await module.requestPermissionsAsync();
     return result.granted;
   }
 
   async start() {
-    ExpoSpeechRecognitionModule.start({
+    const module = getSpeechModule();
+
+    if (!module) {
+      return;
+    }
+
+    module.start({
       lang: APP_CONFIG.defaultLocale,
       interimResults: true,
       continuous: false,
@@ -41,23 +83,29 @@ class ExpoSpeechProvider implements SpeechProvider {
   }
 
   stop() {
-    ExpoSpeechRecognitionModule.stop();
+    getSpeechModule()?.stop();
   }
 
   abort() {
-    ExpoSpeechRecognitionModule.abort();
+    getSpeechModule()?.abort();
   }
 
   subscribe(listeners: SpeechProviderListeners) {
+    const module = getSpeechModule();
+
+    if (!module) {
+      return () => undefined;
+    }
+
     const subscriptions = [
       listeners.onStart
-        ? ExpoSpeechRecognitionModule.addListener("start", listeners.onStart)
+        ? module.addListener("start", listeners.onStart)
         : null,
       listeners.onEnd
-        ? ExpoSpeechRecognitionModule.addListener("end", listeners.onEnd)
+        ? module.addListener("end", listeners.onEnd)
         : null,
       listeners.onResult
-        ? ExpoSpeechRecognitionModule.addListener("result", (event: SpeechResultEvent) => {
+        ? module.addListener("result", (event: SpeechResultEvent) => {
             const topResult = event.results[0];
 
             if (!topResult) {
@@ -72,7 +120,7 @@ class ExpoSpeechProvider implements SpeechProvider {
           })
         : null,
       listeners.onError
-        ? ExpoSpeechRecognitionModule.addListener("error", (event: SpeechErrorEvent) => {
+        ? module.addListener("error", (event: SpeechErrorEvent) => {
             listeners.onError?.({
               code: event.error,
               message: event.message,
