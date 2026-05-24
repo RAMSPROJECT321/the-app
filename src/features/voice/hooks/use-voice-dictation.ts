@@ -1,11 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { speechProvider } from "@/services/speech/expo-speech.provider";
+
+const appendTranscriptChunk = (baseTranscript: string, nextChunk: string) => {
+  const normalizedBase = baseTranscript.trim();
+  const normalizedChunk = nextChunk.trim();
+
+  if (!normalizedBase) {
+    return normalizedChunk;
+  }
+
+  if (!normalizedChunk) {
+    return normalizedBase;
+  }
+
+  return `${normalizedBase}\n\n${normalizedChunk}`;
+};
 
 export const useVoiceDictation = (active: boolean) => {
   const [transcript, setTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sessionBaseTranscriptRef = useRef("");
 
   useEffect(() => {
     if (!active) {
@@ -16,7 +32,9 @@ export const useVoiceDictation = (active: boolean) => {
       onStart: () => setIsListening(true),
       onEnd: () => setIsListening(false),
       onResult: (result) => {
-        setTranscript(result.transcript);
+        setTranscript(
+          appendTranscriptChunk(sessionBaseTranscriptRef.current, result.transcript),
+        );
       },
       onError: (nextError) => {
         setError(nextError.message);
@@ -33,6 +51,7 @@ export const useVoiceDictation = (active: boolean) => {
 
   const startListeningAsync = async () => {
     setError(null);
+    sessionBaseTranscriptRef.current = transcript;
 
     if (!speechProvider.isAvailable()) {
       setError("Speech recognition is unavailable in this build or on this device.");
@@ -54,6 +73,7 @@ export const useVoiceDictation = (active: boolean) => {
   };
 
   const reset = () => {
+    sessionBaseTranscriptRef.current = "";
     setTranscript("");
     setError(null);
   };

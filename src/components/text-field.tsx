@@ -44,6 +44,7 @@ export const TextField = ({
           )}
           multiline={multiline}
           placeholderTextColor={palette.textTertiary}
+          textAlignVertical={multiline ? "top" : "center"}
           {...rest}
         />
       </View>
