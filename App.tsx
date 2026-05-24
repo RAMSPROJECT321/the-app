@@ -18,7 +18,7 @@ import { useTasksStore } from "@/store/tasks-store";
 
 export default function App() {
   const ready = useAppBootstrap();
-  const { palette, resolvedTheme } = useAppTheme();
+  const { palette, resolvedTheme, themeVars } = useAppTheme();
   const authResolved = useSessionStore((state) => state.authResolved);
   const authStatus = useSessionStore((state) => state.authStatus);
   const userId = useSessionStore((state) => state.userId);
@@ -85,7 +85,7 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView className="flex-1 bg-background">
+    <GestureHandlerRootView style={themeVars} className="flex-1 bg-background">
       <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
       <AppNavigator />
     </GestureHandlerRootView>

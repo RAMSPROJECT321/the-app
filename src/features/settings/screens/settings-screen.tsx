@@ -1,6 +1,6 @@
 import { Cloud, CloudOff, LogOut, MoonStar, ShieldCheck } from "lucide-react-native";
 import { useState } from "react";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
@@ -54,6 +54,26 @@ export const SettingsScreen = () => {
     } finally {
       setSigningOut(false);
     }
+  };
+
+  const handleSignOutPress = () => {
+    Alert.alert(
+      "Sign out",
+      "You will leave the current workspace on this device. Local vault secrets stay protected and require sign-in again to access synced metadata.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: () => {
+            void handleSignOut();
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -116,7 +136,7 @@ export const SettingsScreen = () => {
         </View>
         <AppButton
           label="Sign out"
-          onPress={() => void handleSignOut()}
+          onPress={handleSignOutPress}
           icon={LogOut}
           variant="secondary"
           loading={signingOut}

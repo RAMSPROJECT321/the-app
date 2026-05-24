@@ -6,7 +6,7 @@ import {
   Sparkles,
 } from "lucide-react-native";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
@@ -136,6 +136,10 @@ export const DashboardScreen = () => {
 
   const handleVoiceApply = (transcript: string) => {
     createTaskFromVoiceTranscript(transcript);
+    Alert.alert(
+      "Voice note captured",
+      "A new task was created from your transcript. You can refine it from the Tasks screen.",
+    );
   };
 
   return (

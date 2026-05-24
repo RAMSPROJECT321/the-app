@@ -72,7 +72,8 @@ const SettingsStackNavigator = () => (
 const TabNavigator = () => {
   const { palette } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 70 + insets.bottom;
+  const tabBarBottomPadding = Math.max(insets.bottom, 8);
+  const tabBarHeight = 58 + tabBarBottomPadding;
 
   return (
     <Tab.Navigator
@@ -86,12 +87,12 @@ const TabNavigator = () => {
           borderTopWidth: 0,
           elevation: 0,
           position: "absolute",
-          left: 12,
-          right: 12,
-          bottom: 12,
+          left: 0,
+          right: 0,
+          bottom: 0,
           height: tabBarHeight,
-          paddingTop: 8,
-          paddingBottom: Math.max(insets.bottom, 10),
+          paddingTop: 6,
+          paddingBottom: tabBarBottomPadding,
         },
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: palette.accent,
@@ -101,7 +102,7 @@ const TabNavigator = () => {
           fontSize: 11,
         },
         tabBarBackground: () => (
-          <View className="flex-1 overflow-hidden rounded-[28px] border border-border-strong bg-surface-strong shadow-floating" />
+          <View className="flex-1 border-t border-border-strong bg-surface-strong shadow-floating" />
         ),
       }}
     >
