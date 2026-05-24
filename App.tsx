@@ -3,7 +3,7 @@ import "./global.css";
 import NetInfo from "@react-native-community/netinfo";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
-import { AppState } from "react-native";
+import { AppState, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useEffect } from "react";
 
@@ -85,9 +85,17 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={themeVars} className="flex-1 bg-background">
-      <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
-      <AppNavigator />
+    <GestureHandlerRootView style={styles.root}>
+      <View style={themeVars} className="flex-1 bg-background">
+        <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
+        <AppNavigator />
+      </View>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
