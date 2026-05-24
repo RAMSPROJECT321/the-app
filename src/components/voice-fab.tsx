@@ -28,20 +28,20 @@ export const VoiceFab = ({ onPress }: VoiceFabProps) => {
     revealProgress.value = withRepeat(
       withSequence(
         withDelay(
-          500,
+          900,
           withTiming(1, {
-            duration: 280,
+            duration: 420,
             easing: Easing.out(Easing.cubic),
           }),
         ),
         withDelay(
-          1400,
+          2200,
           withTiming(0, {
-            duration: 240,
-            easing: Easing.in(Easing.cubic),
+            duration: 320,
+            easing: Easing.inOut(Easing.cubic),
           }),
         ),
-        withDelay(1800, withTiming(0, { duration: 0 })),
+        withDelay(2400, withTiming(0, { duration: 0 })),
       ),
       -1,
       false,
@@ -53,22 +53,22 @@ export const VoiceFab = ({ onPress }: VoiceFabProps) => {
   }, [revealProgress]);
 
   const labelAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(revealProgress.value, [0, 0.15, 0.85, 1], [0, 1, 1, 0]),
+    opacity: interpolate(revealProgress.value, [0, 0.14, 1], [0, 1, 1]),
     transform: [
       {
-        translateX: interpolate(revealProgress.value, [0, 1], [24, 0]),
+        translateX: interpolate(revealProgress.value, [0, 1], [28, 0]),
       },
     ],
-    width: interpolate(revealProgress.value, [0, 1], [0, 102]),
+    width: interpolate(revealProgress.value, [0, 1], [0, 112]),
   }));
 
   const micAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        translateY: interpolate(revealProgress.value, [0, 0.5, 1], [0, -5, 0]),
+        translateY: interpolate(revealProgress.value, [0, 0.5, 1], [0, -4, 0]),
       },
       {
-        scale: interpolate(revealProgress.value, [0, 0.5, 1], [1, 1.03, 1]),
+        scale: interpolate(revealProgress.value, [0, 0.5, 1], [1, 1.025, 1]),
       },
     ],
   }));
