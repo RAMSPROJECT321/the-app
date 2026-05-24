@@ -18,11 +18,13 @@ import { VoiceFab } from "@/components/voice-fab";
 import { InsightTile } from "@/features/dashboard/components/insight-tile";
 import { VoiceCaptureSheet } from "@/features/voice/components/voice-capture-sheet";
 import { APP_CONFIG, APP_LIMITS } from "@/constants/app";
+import { useSessionStore } from "@/store/session-store";
 import { useTasksStore } from "@/store/tasks-store";
 import { useVaultStore } from "@/store/vault-store";
 import { formatRelativeTime } from "@/utils/date";
 
 export const DashboardScreen = () => {
+  const userId = useSessionStore((state) => state.userId);
   const taskIds = useTasksStore((state) => state.taskIds);
   const tasksById = useTasksStore((state) => state.tasksById);
   const createTaskFromVoiceTranscript = useTasksStore(
@@ -41,12 +43,18 @@ export const DashboardScreen = () => {
   }, []);
 
   const tasks = useMemo(
-    () => taskIds.map((id) => tasksById[id]).filter(Boolean),
-    [taskIds, tasksById],
+    () =>
+      taskIds
+        .map((id) => tasksById[id])
+        .filter((task) => Boolean(task) && task.userId === userId),
+    [taskIds, tasksById, userId],
   );
   const vaultItems = useMemo(
-    () => vaultItemIds.map((id) => vaultItemsById[id]).filter(Boolean),
-    [vaultItemIds, vaultItemsById],
+    () =>
+      vaultItemIds
+        .map((id) => vaultItemsById[id])
+        .filter((item) => Boolean(item) && item.userId === userId),
+    [userId, vaultItemIds, vaultItemsById],
   );
 
   const filteredRecentTasks = useMemo(() => {

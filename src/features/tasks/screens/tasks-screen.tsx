@@ -13,6 +13,7 @@ import { SearchInput } from "@/components/search-input";
 import { SectionHeader } from "@/components/section-header";
 import { TaskCard } from "@/features/tasks/components/task-card";
 import { VoiceCaptureSheet } from "@/features/voice/components/voice-capture-sheet";
+import { useSessionStore } from "@/store/session-store";
 import { useTasksStore } from "@/store/tasks-store";
 import type { Task, TaskPriority, TaskStatus } from "@/types/entities";
 import type { TasksStackParamList } from "@/types/navigation";
@@ -35,6 +36,7 @@ const priorityFilters: Array<"all" | TaskPriority> = [
 const TaskListItem = memo(TaskCard);
 
 export const TasksScreen = ({ navigation }: Props) => {
+  const userId = useSessionStore((state) => state.userId);
   const taskIds = useTasksStore((state) => state.taskIds);
   const tasksById = useTasksStore((state) => state.tasksById);
   const createTask = useTasksStore((state) => state.createTask);
@@ -51,8 +53,11 @@ export const TasksScreen = ({ navigation }: Props) => {
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const tasks = useMemo(
-    () => taskIds.map((id) => tasksById[id]).filter(Boolean),
-    [taskIds, tasksById],
+    () =>
+      taskIds
+        .map((id) => tasksById[id])
+        .filter((task) => Boolean(task) && task.userId === userId),
+    [taskIds, tasksById, userId],
   );
 
   const filteredTasks = useMemo(() => {

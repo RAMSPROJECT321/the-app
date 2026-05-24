@@ -5,9 +5,11 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import type { SyncQueueItem, SyncStatus } from "@/types/sync";
 
 interface SyncState {
+  hydrated: boolean;
   queue: SyncQueueItem[];
   lastSyncedAt?: string;
   status: SyncStatus;
+  setHydrated: (hydrated: boolean) => void;
   enqueue: (item: SyncQueueItem) => void;
   markSynced: (queueItemId: string) => void;
   markFailed: (queueItemId: string, errorMessage: string) => void;
@@ -18,12 +20,23 @@ interface SyncState {
 export const useSyncStore = create<SyncState>()(
   persist(
     (set) => ({
+      hydrated: false,
       queue: [],
       lastSyncedAt: undefined,
       status: "idle",
+      setHydrated: (hydrated) => set({ hydrated }),
       enqueue: (item) =>
         set((state) => ({
-          queue: [item, ...state.queue.filter((queued) => queued.id !== item.id)],
+          queue: [
+            item,
+            ...state.queue.filter(
+              (queued) =>
+                !(
+                  queued.entityId === item.entityId &&
+                  queued.entityType === item.entityType
+                ),
+            ),
+          ],
         })),
       markSynced: (queueItemId) =>
         set((state) => ({
@@ -47,6 +60,9 @@ export const useSyncStore = create<SyncState>()(
     {
       name: "sync-store",
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     },
   ),
 );

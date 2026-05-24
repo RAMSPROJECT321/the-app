@@ -14,6 +14,7 @@ import { SectionHeader } from "@/components/section-header";
 import { TextField } from "@/components/text-field";
 import { VoiceCaptureSheet } from "@/features/voice/components/voice-capture-sheet";
 import { fileService } from "@/services/files/file.service";
+import { useSessionStore } from "@/store/session-store";
 import { useTasksStore } from "@/store/tasks-store";
 import type { TaskPriority, TaskStatus } from "@/types/entities";
 import type { TasksStackParamList } from "@/types/navigation";
@@ -27,7 +28,11 @@ const priorities: TaskPriority[] = ["low", "medium", "high"];
 
 export const TaskDetailScreen = ({ route }: Props) => {
   const { taskId } = route.params;
-  const task = useTasksStore((state) => state.tasksById[taskId]);
+  const userId = useSessionStore((state) => state.userId);
+  const task = useTasksStore((state) => {
+    const nextTask = state.tasksById[taskId];
+    return nextTask?.userId === userId ? nextTask : undefined;
+  });
   const updateTask = useTasksStore((state) => state.updateTask);
   const toggleChecklistItem = useTasksStore((state) => state.toggleChecklistItem);
   const addChecklistItem = useTasksStore((state) => state.addChecklistItem);

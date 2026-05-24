@@ -37,6 +37,7 @@ class ApiClient {
         },
         body: JSON.stringify({
           endpoint,
+          appSecret: APP_CONFIG.googleAppsScriptSharedSecret || undefined,
           ...envelope,
         }),
         signal: controller.signal,

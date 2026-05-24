@@ -29,6 +29,7 @@ const categories: Array<"all" | VaultCategory> = [
 export const VaultScreen = () => {
   const vaultUnlocked = useSessionStore((state) => state.vaultUnlocked);
   const unlockVault = useSessionStore((state) => state.unlockVault);
+  const userId = useSessionStore((state) => state.userId);
   const itemIds = useVaultStore((state) => state.itemIds);
   const itemsById = useVaultStore((state) => state.itemsById);
   const toggleFavorite = useVaultStore((state) => state.toggleFavorite);
@@ -37,8 +38,11 @@ export const VaultScreen = () => {
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const items = useMemo(
-    () => itemIds.map((id) => itemsById[id]).filter(Boolean),
-    [itemIds, itemsById],
+    () =>
+      itemIds
+        .map((id) => itemsById[id])
+        .filter((item) => Boolean(item) && item.userId === userId),
+    [itemIds, itemsById, userId],
   );
 
   const filteredItems = useMemo(() => {

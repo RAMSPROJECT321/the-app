@@ -6,10 +6,12 @@ import { APP_CONFIG } from "@/constants/app";
 import { createId } from "@/utils/id";
 
 interface SessionState {
+  hydrated: boolean;
   userId: string;
   deviceId: string;
   vaultUnlocked: boolean;
   lastUnlockedAt?: string;
+  setHydrated: (hydrated: boolean) => void;
   ensureDeviceId: () => string;
   unlockVault: () => void;
   lockVault: () => void;
@@ -18,9 +20,11 @@ interface SessionState {
 export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
+      hydrated: false,
       userId: APP_CONFIG.appUserId,
       deviceId: "",
       vaultUnlocked: false,
+      setHydrated: (hydrated) => set({ hydrated }),
       ensureDeviceId: () => {
         const existing = get().deviceId;
 
@@ -45,6 +49,9 @@ export const useSessionStore = create<SessionState>()(
     {
       name: "session-store",
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
       partialize: (state) => ({
         userId: state.userId,
         deviceId: state.deviceId,

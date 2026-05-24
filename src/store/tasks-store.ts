@@ -18,10 +18,13 @@ interface CreateTaskInput {
 }
 
 interface TasksState {
+  hydrated: boolean;
   seededDemoData: boolean;
   tasksById: Record<string, Task>;
   taskIds: string[];
-  seedDemoData: () => void;
+  setHydrated: (hydrated: boolean) => void;
+  seedDemoDataIfEmpty: () => void;
+  replaceAllFromRemote: (tasks: Task[]) => void;
   createTask: (input: CreateTaskInput) => string;
   createTaskFromVoiceTranscript: (transcript: string) => string;
   updateTask: (taskId: string, patch: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "tags">>) => void;
@@ -86,11 +89,13 @@ const withTimelineUpdate = (task: Task, message: string, type: Task["timeline"][
 export const useTasksStore = create<TasksState>()(
   persist(
     (set, get) => ({
+      hydrated: false,
       seededDemoData: false,
       tasksById: {},
       taskIds: [],
-      seedDemoData: () => {
-        if (get().seededDemoData) {
+      setHydrated: (hydrated) => set({ hydrated }),
+      seedDemoDataIfEmpty: () => {
+        if (get().seededDemoData || get().taskIds.length > 0) {
           return;
         }
 
@@ -102,6 +107,15 @@ export const useTasksStore = create<TasksState>()(
           taskIds: demoTasks.map((task) => task.id),
         });
       },
+      replaceAllFromRemote: (tasks) =>
+        set({
+          seededDemoData: false,
+          tasksById: Object.fromEntries(tasks.map((task) => [task.id, task])),
+          taskIds: tasks
+            .slice()
+            .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+            .map((task) => task.id),
+        }),
       createTask: (input) => {
         const userId = useSessionStore.getState().userId;
         const taskId = createId("task");
@@ -305,6 +319,9 @@ export const useTasksStore = create<TasksState>()(
     {
       name: "tasks-store",
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     },
   ),
 );

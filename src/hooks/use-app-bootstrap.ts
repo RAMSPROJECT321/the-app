@@ -14,7 +14,10 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef, useState } from "react";
 
+import { APP_CONFIG } from "@/constants/app";
+import { syncService } from "@/services/sync/sync.service";
 import { useSessionStore } from "@/store/session-store";
+import { useSyncStore } from "@/store/sync-store";
 import { useTasksStore } from "@/store/tasks-store";
 import { useVaultStore } from "@/store/vault-store";
 
@@ -23,6 +26,10 @@ void SplashScreen.preventAutoHideAsync();
 export const useAppBootstrap = () => {
   const bootstrapStartedRef = useRef(false);
   const [ready, setReady] = useState(false);
+  const sessionHydrated = useSessionStore((state) => state.hydrated);
+  const tasksHydrated = useTasksStore((state) => state.hydrated);
+  const vaultHydrated = useVaultStore((state) => state.hydrated);
+  const syncHydrated = useSyncStore((state) => state.hydrated);
   const [fontsLoaded, fontError] = useFonts({
     Manrope_400Regular,
     Manrope_500Medium,
@@ -35,7 +42,14 @@ export const useAppBootstrap = () => {
   });
 
   useEffect(() => {
-    if ((!fontsLoaded && !fontError) || bootstrapStartedRef.current) {
+    if (
+      (!fontsLoaded && !fontError) ||
+      bootstrapStartedRef.current ||
+      !sessionHydrated ||
+      !tasksHydrated ||
+      !vaultHydrated ||
+      !syncHydrated
+    ) {
       return;
     }
 
@@ -43,14 +57,27 @@ export const useAppBootstrap = () => {
 
     const bootstrapAsync = async () => {
       useSessionStore.getState().ensureDeviceId();
-      useTasksStore.getState().seedDemoData();
-      await useVaultStore.getState().seedDemoDataAsync();
+
+      if (!APP_CONFIG.googleAppsScriptBaseUrl) {
+        useTasksStore.getState().seedDemoDataIfEmpty();
+        await useVaultStore.getState().seedDemoDataAsyncIfEmpty();
+      }
+
       setReady(true);
       await SplashScreen.hideAsync();
+
+      void syncService.initializeDataAsync();
     };
 
     void bootstrapAsync();
-  }, [fontError, fontsLoaded]);
+  }, [
+    fontError,
+    fontsLoaded,
+    sessionHydrated,
+    syncHydrated,
+    tasksHydrated,
+    vaultHydrated,
+  ]);
 
   return ready;
 };

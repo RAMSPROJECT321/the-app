@@ -43,6 +43,7 @@
     "@types/react": "~19.2.2",
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "^56.0.12",
+    "googleapis": "^172.0.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -50,7 +51,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sheets:setup-schema": "node scripts/setup-google-sheet-schema.js"
   },
   "private": true
 }

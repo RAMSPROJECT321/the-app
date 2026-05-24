@@ -1,4 +1,4 @@
-import { CloudOff, MoonStar, ShieldCheck, SunMedium } from "lucide-react-native";
+import { CloudOff, MoonStar, ShieldCheck } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 
@@ -30,7 +30,7 @@ export const SettingsScreen = () => {
 
   const handleSyncNow = async () => {
     setSyncing(true);
-    const result = await syncService.syncPendingChangesAsync();
+    const result = await syncService.syncNowAsync();
     setSyncMessage(result.message);
     setSyncing(false);
   };
@@ -130,7 +130,7 @@ export const SettingsScreen = () => {
       {!APP_CONFIG.googleAppsScriptBaseUrl ? (
         <ErrorState
           title="Apps Script not configured"
-          description="Add your Apps Script web app URL in app config to move from local-first mode to actual background sync."
+          description="Add the Apps Script /exec URL, shared secret, and stable appUserId in app config to enable sheet-backed sync."
         />
       ) : null}
     </Screen>

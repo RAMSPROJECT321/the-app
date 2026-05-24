@@ -23,8 +23,17 @@ export default function App() {
   }, [palette.background]);
 
   useEffect(() => {
+    let wasConnected = useConnectivityStore.getState().isConnected;
+
     const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
-      useConnectivityStore.getState().setConnected(Boolean(state.isConnected));
+      const isConnected = Boolean(state.isConnected);
+      useConnectivityStore.getState().setConnected(isConnected);
+
+      if (!wasConnected && isConnected) {
+        void syncService.syncNowAsync();
+      }
+
+      wasConnected = isConnected;
     });
 
     const appStateSubscription = AppState.addEventListener("change", (nextState) => {
@@ -34,7 +43,7 @@ export default function App() {
       }
 
       if (useConnectivityStore.getState().isConnected) {
-        void syncService.syncPendingChangesAsync();
+        void syncService.syncNowAsync();
       }
     });
 

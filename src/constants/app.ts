@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 type ExtraConfig = {
   appName?: string;
   googleAppsScriptBaseUrl?: string;
+  googleAppsScriptSharedSecret?: string;
   appUserId?: string;
 };
 
@@ -11,6 +12,7 @@ const extra = (Constants.expoConfig?.extra ?? {}) as ExtraConfig;
 export const APP_CONFIG = {
   appName: extra.appName ?? "AegisFlow",
   googleAppsScriptBaseUrl: extra.googleAppsScriptBaseUrl ?? "",
+  googleAppsScriptSharedSecret: extra.googleAppsScriptSharedSecret ?? "",
   appUserId: extra.appUserId ?? "demo-user",
   defaultLocale: "en-US",
 };

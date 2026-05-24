@@ -23,10 +23,13 @@ interface SaveVaultInput {
 }
 
 interface VaultState {
+  hydrated: boolean;
   seededDemoData: boolean;
   itemsById: Record<string, VaultItem>;
   itemIds: string[];
-  seedDemoDataAsync: () => Promise<void>;
+  setHydrated: (hydrated: boolean) => void;
+  seedDemoDataAsyncIfEmpty: () => Promise<void>;
+  replaceAllFromRemote: (items: VaultItem[]) => void;
   saveVaultItemAsync: (input: SaveVaultInput, itemId?: string) => Promise<string>;
   deleteVaultItemAsync: (itemId: string) => Promise<void>;
   toggleFavorite: (itemId: string) => void;
@@ -58,11 +61,13 @@ const upsertVaultState = (state: VaultState, item: VaultItem) => {
 export const useVaultStore = create<VaultState>()(
   persist(
     (set, get) => ({
+      hydrated: false,
       seededDemoData: false,
       itemsById: {},
       itemIds: [],
-      seedDemoDataAsync: async () => {
-        if (get().seededDemoData) {
+      setHydrated: (hydrated) => set({ hydrated }),
+      seedDemoDataAsyncIfEmpty: async () => {
+        if (get().seededDemoData || get().itemIds.length > 0) {
           return;
         }
 
@@ -98,6 +103,15 @@ export const useVaultStore = create<VaultState>()(
           itemIds: items.map((item) => item.id),
         });
       },
+      replaceAllFromRemote: (items) =>
+        set({
+          seededDemoData: false,
+          itemsById: Object.fromEntries(items.map((item) => [item.id, item])),
+          itemIds: items
+            .slice()
+            .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+            .map((item) => item.id),
+        }),
       saveVaultItemAsync: async (input, itemId) => {
         const userId = useSessionStore.getState().userId;
         const now = new Date().toISOString();
@@ -174,6 +188,9 @@ export const useVaultStore = create<VaultState>()(
     {
       name: "vault-store",
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     },
   ),
 );
