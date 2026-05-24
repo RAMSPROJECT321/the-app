@@ -28,20 +28,20 @@ export const VoiceFab = ({ onPress }: VoiceFabProps) => {
     revealProgress.value = withRepeat(
       withSequence(
         withDelay(
-          900,
+          1200,
           withTiming(1, {
-            duration: 420,
+            duration: 520,
             easing: Easing.out(Easing.cubic),
           }),
         ),
         withDelay(
-          2200,
+          1900,
           withTiming(0, {
-            duration: 320,
+            duration: 360,
             easing: Easing.inOut(Easing.cubic),
           }),
         ),
-        withDelay(2400, withTiming(0, { duration: 0 })),
+        withDelay(2600, withTiming(0, { duration: 0 })),
       ),
       -1,
       false,
@@ -53,10 +53,10 @@ export const VoiceFab = ({ onPress }: VoiceFabProps) => {
   }, [revealProgress]);
 
   const labelAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(revealProgress.value, [0, 0.14, 0.92, 1], [0, 1, 1, 0]),
+    opacity: interpolate(revealProgress.value, [0, 0.14, 1], [0, 1, 1]),
     transform: [
       {
-        translateX: interpolate(revealProgress.value, [0, 1], [24, 0]),
+        translateX: interpolate(revealProgress.value, [0, 1], [30, 0]),
       },
     ],
   }));
@@ -76,12 +76,13 @@ export const VoiceFab = ({ onPress }: VoiceFabProps) => {
     <View className="absolute bottom-36 right-5 h-16 items-end justify-center">
       <View
         pointerEvents="none"
-        className="absolute right-20 top-5 h-6 w-36 items-end justify-center overflow-hidden"
+        className="absolute right-20 top-4 h-7 w-40 items-end justify-center overflow-hidden"
       >
         <Animated.View style={labelAnimatedStyle}>
           <AppText
             numberOfLines={1}
-            className="font-display text-sm tracking-[0.18em]"
+            tone="accent"
+            className="font-display text-base tracking-[0.2em]"
           >
             VOICE NOTE
           </AppText>
