@@ -2,6 +2,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Home, ListTodo, Settings, ShieldEllipsis } from "lucide-react-native";
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { LoginScreen } from "@/features/auth/screens/login-screen";
@@ -32,16 +34,6 @@ const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const TasksStack = createNativeStackNavigator<TasksStackParamList>();
 const VaultStack = createNativeStackNavigator<VaultStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
-
-const tabBarStyle = {
-  backgroundColor: "transparent",
-  borderTopWidth: 0,
-  elevation: 0,
-  position: "absolute" as const,
-  height: 86,
-  paddingTop: 10,
-  paddingBottom: 16,
-};
 
 const AuthStackNavigator = () => (
   <AuthStack.Navigator screenOptions={{ headerShown: false }}>
@@ -79,19 +71,38 @@ const SettingsStackNavigator = () => (
 
 const TabNavigator = () => {
   const { palette } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 70 + insets.bottom;
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle,
+        sceneStyle: {
+          backgroundColor: palette.background,
+        },
+        tabBarStyle: {
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
+          elevation: 0,
+          position: "absolute",
+          left: 12,
+          right: 12,
+          bottom: 12,
+          height: tabBarHeight,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 10),
+        },
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: palette.accent,
         tabBarInactiveTintColor: palette.textTertiary,
         tabBarLabelStyle: {
           fontFamily: "Manrope_700Bold",
           fontSize: 11,
         },
-        tabBarBackground: () => <></>,
+        tabBarBackground: () => (
+          <View className="flex-1 overflow-hidden rounded-[28px] border border-border-strong bg-surface-strong shadow-floating" />
+        ),
       }}
     >
       <Tab.Screen

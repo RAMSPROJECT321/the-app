@@ -1,8 +1,11 @@
+import { Platform } from "react-native";
+
 import { APP_CONFIG } from "@/constants/app";
 import type {
   SpeechProvider,
   SpeechProviderListeners,
 } from "@/services/speech/speech.types";
+import { debugLogger } from "@/utils/debug";
 
 type SpeechResultEvent = {
   isFinal: boolean;
@@ -43,6 +46,24 @@ const getSpeechModule = () => {
   }
 };
 
+const shouldUseOnDeviceRecognitionAsync = async (
+  module: ExpoSpeechRecognitionModuleType,
+) => {
+  if (Platform.OS === "ios") {
+    return true;
+  }
+
+  try {
+    const supportedLocales = await module.getSupportedLocales({});
+    return supportedLocales.installedLocales.includes(APP_CONFIG.defaultLocale);
+  } catch (error) {
+    debugLogger.warn("voice", "unable to inspect installed speech locales", {
+      error,
+    });
+    return false;
+  }
+};
+
 class ExpoSpeechProvider implements SpeechProvider {
   isAvailable() {
     const module = getSpeechModule();
@@ -72,11 +93,18 @@ class ExpoSpeechProvider implements SpeechProvider {
       return;
     }
 
+    const requiresOnDeviceRecognition = await shouldUseOnDeviceRecognitionAsync(module);
+    debugLogger.log("voice", "starting speech recognition", {
+      locale: APP_CONFIG.defaultLocale,
+      platform: Platform.OS,
+      requiresOnDeviceRecognition,
+    });
+
     module.start({
       lang: APP_CONFIG.defaultLocale,
       interimResults: true,
       continuous: false,
-      requiresOnDeviceRecognition: true,
+      requiresOnDeviceRecognition,
       addsPunctuation: true,
       maxAlternatives: 1,
     });

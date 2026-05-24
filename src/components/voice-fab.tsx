@@ -12,7 +12,7 @@ export const VoiceFab = ({ onPress }: VoiceFabProps) => {
   const { palette } = useAppTheme();
 
   return (
-    <View className="absolute bottom-7 right-5">
+    <View className="absolute bottom-28 right-5">
       <Pressable
         className="h-16 w-16 items-center justify-center rounded-full bg-accent shadow-floating"
         onPress={onPress}

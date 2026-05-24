@@ -11,6 +11,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
 import { Card } from "@/components/card";
+import { Screen } from "@/components/screen";
 import { SearchInput } from "@/components/search-input";
 import { SectionHeader } from "@/components/section-header";
 import { SkeletonBlock } from "@/components/skeleton-block";
@@ -138,10 +139,10 @@ export const DashboardScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <Screen scrollable={false} contentClassName="gap-0 px-0 pb-0 pt-0">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="gap-6 px-5 pb-32 pt-6"
+        contentContainerClassName="gap-6 px-5 pb-40 pt-2"
         showsVerticalScrollIndicator={false}
       >
         <Card className="overflow-hidden bg-surface-elevated px-5 py-6">
@@ -250,6 +251,6 @@ export const DashboardScreen = () => {
         onClose={() => setVoiceOpen(false)}
         onApply={handleVoiceApply}
       />
-    </View>
+    </Screen>
   );
 };

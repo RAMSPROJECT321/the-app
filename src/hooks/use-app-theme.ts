@@ -10,16 +10,16 @@ export const useAppTheme = () => {
   const { setColorScheme } = useNativeWindColorScheme();
   const systemColorScheme = useSystemColorScheme();
 
-  useEffect(() => {
-    setColorScheme(preference);
-  }, [preference, setColorScheme]);
-
   const resolvedTheme: "light" | "dark" =
     preference === "system"
       ? systemColorScheme === "dark"
         ? "dark"
         : "light"
       : preference;
+
+  useEffect(() => {
+    setColorScheme(resolvedTheme);
+  }, [resolvedTheme, setColorScheme]);
 
   const palette = useMemo(
     () => (resolvedTheme === "dark" ? darkPalette : lightPalette),

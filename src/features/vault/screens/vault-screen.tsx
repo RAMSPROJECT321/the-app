@@ -116,8 +116,8 @@ export const VaultScreen = ({ navigation }: Props) => {
   }
 
   return (
-    <Screen scrollable={false} contentClassName="pb-0">
-      <View className="gap-6 px-5 pb-4 pt-6">
+    <Screen scrollable={false} contentClassName="gap-0 px-0 pb-0 pt-0">
+      <View className="gap-5 px-5 pb-4 pt-2">
         <SectionHeader
           eyebrow="Secure vault"
           title="Vault"
@@ -162,7 +162,7 @@ export const VaultScreen = ({ navigation }: Props) => {
         data={filteredItems}
         renderItem={renderVaultItem}
         keyExtractor={(item) => item.id}
-        contentContainerClassName="gap-4 px-5 pb-32"
+        contentContainerClassName="gap-4 px-5 pb-40"
         showsVerticalScrollIndicator={false}
         initialNumToRender={6}
         windowSize={7}

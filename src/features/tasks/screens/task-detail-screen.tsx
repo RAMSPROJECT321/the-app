@@ -98,21 +98,21 @@ export const TaskDetailScreen = ({ route }: Props) => {
         return;
       }
 
-        addAttachment(taskId, {
-          id: createId("attachment"),
-          ...file,
-          createdAt: new Date().toISOString(),
-          syncState: "local_only",
-        });
+      addAttachment(taskId, {
+        id: createId("attachment"),
+        ...file,
+        createdAt: new Date().toISOString(),
+        syncState: "local_only",
+      });
       Alert.alert("Attachment saved", APP_MESSAGES.attachmentQueued);
     })();
   };
 
   return (
-    <Screen scrollable={false} contentClassName="pb-0">
+    <Screen scrollable={false} contentClassName="gap-0 px-0 pb-0 pt-0">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="gap-6 px-5 pb-28 pt-6"
+        contentContainerClassName="gap-6 px-5 pb-40 pt-2"
         showsVerticalScrollIndicator={false}
       >
         <SectionHeader

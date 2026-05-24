@@ -23,19 +23,19 @@ export const Screen = ({
   const content = scrollable ? (
     <ScrollView
       className="flex-1"
-      contentContainerClassName={cn("gap-6 px-5 pb-28 pt-4", contentClassName)}
+      contentContainerClassName={cn("gap-6 px-5 pb-40 pt-3", contentClassName)}
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View className={cn("flex-1 gap-6 px-5 pb-28 pt-4", contentClassName)}>
+    <View className={cn("flex-1 gap-6 px-5 pb-40 pt-3", contentClassName)}>
       {children}
     </View>
   );
 
   return (
-    <SafeAreaView className={cn("flex-1 bg-background", className)}>
+    <SafeAreaView edges={["top", "left", "right"]} className={cn("flex-1 bg-background", className)}>
       <KeyboardAvoidingView
         behavior={Platform.select({
           ios: "padding",

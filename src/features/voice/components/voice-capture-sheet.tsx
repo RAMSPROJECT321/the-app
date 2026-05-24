@@ -1,5 +1,6 @@
 import { Mic, Sparkles } from "lucide-react-native";
 import { Modal, Pressable, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
@@ -48,7 +49,7 @@ export const VoiceCaptureSheet = ({
   return (
     <Modal animationType="slide" presentationStyle="overFullScreen" transparent visible={visible}>
       <Pressable className="flex-1 bg-overlay/45" onPress={handleClose}>
-        <View className="mt-auto px-4 pb-6">
+        <SafeAreaView edges={["bottom"]} className="mt-auto px-4 pb-4">
           <Pressable onPress={() => undefined}>
             <Card className="gap-5 rounded-[32px] px-5 py-6">
               <View className="flex-row items-start justify-between gap-4">
@@ -60,13 +61,13 @@ export const VoiceCaptureSheet = ({
                     <AppText variant="title">Voice capture</AppText>
                   </View>
                   <AppText tone="secondary">
-                    Speak naturally, review the transcript, then edit before saving.
+                    Speak naturally, review the transcript, then edit before saving. Android will use network recognition if the offline language pack is not installed.
                   </AppText>
                 </View>
               </View>
 
               <View className="flex-row items-center justify-between rounded-3xl bg-background-muted px-4 py-4">
-                  <View className="flex-row items-center gap-3">
+                <View className="flex-row items-center gap-3">
                   <Mic color="#3778FF" size={18} strokeWidth={2.2} />
                   <AppText variant="bodyStrong">
                     {isListening ? "Listening…" : "Ready to capture"}
@@ -103,7 +104,7 @@ export const VoiceCaptureSheet = ({
               </View>
             </Card>
           </Pressable>
-        </View>
+        </SafeAreaView>
       </Pressable>
     </Modal>
   );

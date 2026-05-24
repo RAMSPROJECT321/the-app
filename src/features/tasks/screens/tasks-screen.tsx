@@ -115,8 +115,8 @@ export const TasksScreen = ({ navigation }: Props) => {
   );
 
   return (
-    <Screen scrollable={false} contentClassName="pb-0">
-      <View className="gap-6 px-5 pb-4 pt-6">
+    <Screen scrollable={false} contentClassName="gap-0 px-0 pb-0 pt-0">
+      <View className="gap-5 px-5 pb-4 pt-2">
         <SectionHeader
           eyebrow="Ideas and execution"
           title="Task tracker"
@@ -199,7 +199,7 @@ export const TasksScreen = ({ navigation }: Props) => {
         renderItem={renderTaskItem}
         keyExtractor={(item) => item.id}
         ItemSeparatorComponent={ListItemSeparator}
-        contentContainerClassName="px-5 pb-32"
+        contentContainerClassName="px-5 pb-40"
         showsVerticalScrollIndicator={false}
         initialNumToRender={6}
         windowSize={7}
