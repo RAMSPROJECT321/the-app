@@ -10,6 +10,7 @@ import {
 import { APP_MESSAGES, hasFirebaseConfig } from "@/constants/app";
 import { getFirebaseAuthInstance } from "@/services/firebase/firebase-app";
 import { useSessionStore } from "@/store/session-store";
+import { debugLogger } from "@/utils/debug";
 
 let authBootstrapPromise: Promise<void> | null = null;
 let authUnsubscribe: (() => void) | null = null;
@@ -18,6 +19,10 @@ const applyAuthUser = (user: User | null) => {
   const nextState = useSessionStore.getState();
 
   if (user) {
+    debugLogger.log("auth", "authenticated user resolved", {
+      userId: user.uid,
+      email: user.email ?? "",
+    });
     nextState.setAuthenticatedUser({
       userId: user.uid,
       email: user.email ?? "",
@@ -25,6 +30,7 @@ const applyAuthUser = (user: User | null) => {
     return;
   }
 
+  debugLogger.log("auth", "auth state changed to signed out");
   nextState.clearAuthenticatedUser();
 };
 
@@ -68,12 +74,14 @@ export const authService = {
 
     authBootstrapPromise = new Promise((resolve) => {
       if (!hasFirebaseConfig) {
+        debugLogger.warn("auth", "firebase config missing during bootstrap");
         useSessionStore.getState().setAuthResolved();
         resolve();
         return;
       }
 
       const auth = getFirebaseAuthInstance();
+      debugLogger.log("auth", "initializing auth state listener");
 
       authUnsubscribe?.();
       authUnsubscribe = onAuthStateChanged(auth, (user) => {
@@ -91,6 +99,7 @@ export const authService = {
     }
 
     const auth = getFirebaseAuthInstance();
+    debugLogger.log("auth", "sign-in requested", { email: email.trim() });
     await signInWithEmailAndPassword(auth, email.trim(), password);
   },
 
@@ -100,6 +109,7 @@ export const authService = {
     }
 
     const auth = getFirebaseAuthInstance();
+    debugLogger.log("auth", "sign-up requested", { email: email.trim() });
     await createUserWithEmailAndPassword(auth, email.trim(), password);
   },
 
@@ -109,6 +119,7 @@ export const authService = {
     }
 
     const auth = getFirebaseAuthInstance();
+    debugLogger.log("auth", "password reset requested", { email: email.trim() });
     await sendPasswordResetEmail(auth, email.trim());
   },
 
@@ -119,6 +130,7 @@ export const authService = {
     }
 
     const auth = getFirebaseAuthInstance();
+    debugLogger.log("auth", "sign-out requested");
     await signOut(auth);
   },
 

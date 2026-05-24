@@ -7,10 +7,36 @@ import { useSessionStore } from "@/store/session-store";
 import { useSyncStore } from "@/store/sync-store";
 import { useTasksStore } from "@/store/tasks-store";
 import { useVaultStore } from "@/store/vault-store";
+import { debugLogger } from "@/utils/debug";
 
 let tasksUnsubscribe: (() => void) | null = null;
 let vaultUnsubscribe: (() => void) | null = null;
 let activeUserId: string | null = null;
+
+const mapSyncErrorMessage = (code?: string) => {
+  if (code === "permission-denied") {
+    return APP_MESSAGES.firestorePermissionDenied;
+  }
+
+  return "Realtime sync failed. Check the console logs for the exact Firebase operation and error.";
+};
+
+const handleRealtimeError = (
+  scope: "tasks" | "vault",
+  userId: string,
+  error: { code?: string; message: string },
+) => {
+  debugLogger.error("sync", "realtime listener error", {
+    scope,
+    userId,
+    code: error.code,
+    message: error.message,
+  });
+
+  useSyncStore
+    .getState()
+    .setError(error.code ?? "unknown", `${mapSyncErrorMessage(error.code)} (${scope})`);
+};
 
 const updateStatusFromSnapshot = (meta: {
   fromCache: boolean;
@@ -27,6 +53,7 @@ const updateStatusFromSnapshot = (meta: {
   }
 
   useSyncStore.getState().setStatus("idle");
+  useSyncStore.getState().clearError();
 
   if (!meta.fromCache) {
     useSyncStore.getState().setLastSyncedAt(new Date().toISOString());
@@ -38,6 +65,7 @@ export const syncService = {
     const userId = useSessionStore.getState().userId;
 
     if (!userId) {
+      debugLogger.log("sync", "initialize requested without signed-in user");
       return {
         mode: "signed_out",
         message: "Sign in to load your workspace.",
@@ -49,6 +77,7 @@ export const syncService = {
 
   async startRealtimeSyncAsync(userId: string) {
     if (!hasFirebaseConfig) {
+      debugLogger.warn("sync", "start requested without firebase config");
       return {
         started: false,
         message: APP_MESSAGES.missingFirebaseConfig,
@@ -56,21 +85,36 @@ export const syncService = {
     }
 
     if (activeUserId === userId && tasksUnsubscribe && vaultUnsubscribe) {
+      debugLogger.log("sync", "reusing existing realtime listeners", { userId });
       return this.syncNowAsync();
     }
 
     this.stopRealtimeSync();
     activeUserId = userId;
+    useSyncStore.getState().clearError();
+    debugLogger.log("sync", "starting realtime sync", { userId });
 
-    tasksUnsubscribe = tasksRepository.subscribe(userId, (tasks, meta) => {
-      useTasksStore.getState().replaceAllFromRemote(tasks);
-      updateStatusFromSnapshot(meta);
-    });
+    tasksUnsubscribe = tasksRepository.subscribe(
+      userId,
+      (tasks, meta) => {
+        useTasksStore.getState().replaceAllFromRemote(tasks);
+        updateStatusFromSnapshot(meta);
+      },
+      (error) => {
+        handleRealtimeError("tasks", userId, error);
+      },
+    );
 
-    vaultUnsubscribe = vaultRepository.subscribe(userId, (items, meta) => {
-      useVaultStore.getState().replaceAllFromRemote(items);
-      updateStatusFromSnapshot(meta);
-    });
+    vaultUnsubscribe = vaultRepository.subscribe(
+      userId,
+      (items, meta) => {
+        useVaultStore.getState().replaceAllFromRemote(items);
+        updateStatusFromSnapshot(meta);
+      },
+      (error) => {
+        handleRealtimeError("vault", userId, error);
+      },
+    );
 
     if (useConnectivityStore.getState().isConnected) {
       return this.syncNowAsync();
@@ -85,6 +129,7 @@ export const syncService = {
   },
 
   stopRealtimeSync() {
+    debugLogger.log("sync", "stopping realtime sync", { userId: activeUserId });
     tasksUnsubscribe?.();
     vaultUnsubscribe?.();
     tasksUnsubscribe = null;
@@ -94,6 +139,7 @@ export const syncService = {
 
   async syncNowAsync() {
     if (!hasFirebaseConfig) {
+      debugLogger.warn("sync", "manual sync requested without firebase config");
       return {
         syncedCount: 0,
         pulled: false,
@@ -104,6 +150,7 @@ export const syncService = {
     const userId = useSessionStore.getState().userId;
 
     if (!userId) {
+      debugLogger.warn("sync", "manual sync requested without signed-in user");
       return {
         syncedCount: 0,
         pulled: false,
@@ -113,6 +160,7 @@ export const syncService = {
 
     if (!useConnectivityStore.getState().isConnected) {
       useSyncStore.getState().setStatus("offline");
+      debugLogger.log("sync", "manual sync skipped because device is offline", { userId });
       return {
         syncedCount: 0,
         pulled: false,
@@ -121,14 +169,42 @@ export const syncService = {
     }
 
     useSyncStore.getState().setStatus("syncing");
-    await waitForRemoteWritesAsync();
-    useSyncStore.getState().setStatus("idle");
-    useSyncStore.getState().setLastSyncedAt(new Date().toISOString());
+    useSyncStore.getState().clearError();
+    debugLogger.log("sync", "waiting for remote writes", { userId });
 
-    return {
-      syncedCount: 0,
-      pulled: true,
-      message: "Firebase sync is up to date. Task attachments remain on this device only.",
-    };
+    try {
+      await waitForRemoteWritesAsync();
+      useSyncStore.getState().setStatus("idle");
+      useSyncStore.getState().setLastSyncedAt(new Date().toISOString());
+      debugLogger.log("sync", "manual sync completed", { userId });
+
+      return {
+        syncedCount: 0,
+        pulled: true,
+        message: "Firebase sync is up to date. Task attachments remain on this device only.",
+      };
+    } catch (error) {
+      const code =
+        typeof error === "object" &&
+        error &&
+        "code" in error &&
+        typeof error.code === "string"
+          ? error.code
+          : "unknown";
+      const message = mapSyncErrorMessage(code);
+
+      useSyncStore.getState().setError(code, message);
+      debugLogger.error("sync", "manual sync failed", {
+        userId,
+        code,
+        error,
+      });
+
+      return {
+        syncedCount: 0,
+        pulled: false,
+        message,
+      };
+    }
   },
 };

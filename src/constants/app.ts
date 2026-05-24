@@ -45,6 +45,8 @@ export const APP_LIMITS = {
 export const APP_MESSAGES = {
   missingFirebaseConfig:
     "Firebase is not configured yet. Add the Firebase app keys in app config to enable authentication and sync.",
+  firestorePermissionDenied:
+    "Firestore rejected the request. Publish firestore.rules in your Firebase project so the signed-in user can read and write their own data.",
   attachmentQueued:
     "Attachment saved on this device. It remains available after restart or same-device sign-in while the local file still exists.",
   vaultSecretUnavailable:

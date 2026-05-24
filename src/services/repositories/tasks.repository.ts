@@ -6,11 +6,13 @@ import {
   orderBy,
   query,
   setDoc,
+  type FirestoreError,
   type QuerySnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
 
 import { getFirestoreDb } from "@/services/firebase/firebase-app";
+import { debugLogger } from "@/utils/debug";
 import type {
   AttachmentSyncState,
   BaseEntity,
@@ -27,6 +29,8 @@ interface SnapshotMeta {
 
 const collectionPath = (userId: string) =>
   collection(getFirestoreDb(), "users", userId, "tasks");
+
+const describeCollectionPath = (userId: string) => `users/${userId}/tasks`;
 
 const serializeTask = ({ syncState, ...task }: Task) => ({
   ...task,
@@ -130,23 +134,58 @@ const mapTask = (
   });
 
 export const tasksRepository = {
-  subscribe(userId: string, onTasks: (tasks: Task[], meta: SnapshotMeta) => void): Unsubscribe {
+  subscribe(
+    userId: string,
+    onTasks: (tasks: Task[], meta: SnapshotMeta) => void,
+    onError?: (error: FirestoreError) => void,
+  ): Unsubscribe {
+    debugLogger.log("firestore:tasks", "starting snapshot listener", {
+      userId,
+      path: describeCollectionPath(userId),
+    });
+
     return onSnapshot(
       query(collectionPath(userId), orderBy("updatedAt", "desc")),
       (snapshot) => {
+        debugLogger.log("firestore:tasks", "snapshot received", {
+          userId,
+          path: describeCollectionPath(userId),
+          count: snapshot.docs.length,
+          fromCache: snapshot.metadata.fromCache,
+          hasPendingWrites: snapshot.metadata.hasPendingWrites,
+        });
         onTasks(mapTask(userId, snapshot), {
           fromCache: snapshot.metadata.fromCache,
           hasPendingWrites: snapshot.metadata.hasPendingWrites,
         });
       },
+      (error) => {
+        debugLogger.error("firestore:tasks", "snapshot listener failed", {
+          userId,
+          path: describeCollectionPath(userId),
+          code: error.code,
+          message: error.message,
+        });
+        onError?.(error);
+      },
     );
   },
 
   async upsertTaskAsync(task: Task) {
+    debugLogger.log("firestore:tasks", "upserting task", {
+      userId: task.userId,
+      taskId: task.id,
+      path: `${describeCollectionPath(task.userId)}/${task.id}`,
+    });
     await setDoc(doc(collectionPath(task.userId), task.id), serializeTask(task));
   },
 
   async deleteTaskAsync(userId: string, taskId: string) {
+    debugLogger.log("firestore:tasks", "deleting task", {
+      userId,
+      taskId,
+      path: `${describeCollectionPath(userId)}/${taskId}`,
+    });
     await deleteDoc(doc(collectionPath(userId), taskId));
   },
 };

@@ -9,7 +9,7 @@ import { Chip } from "@/components/chip";
 import { ErrorState } from "@/components/error-state";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
-import { APP_MESSAGES, hasFirebaseConfig } from "@/constants/app";
+import { APP_CONFIG, APP_MESSAGES, hasFirebaseConfig } from "@/constants/app";
 import { authService } from "@/services/auth/auth.service";
 import { syncService } from "@/services/sync/sync.service";
 import { useConnectivityStore } from "@/store/connectivity-store";
@@ -23,6 +23,8 @@ export const SettingsScreen = () => {
   const setPreference = useThemeStore((state) => state.setPreference);
   const syncStatus = useSyncStore((state) => state.status);
   const lastSyncedAt = useSyncStore((state) => state.lastSyncedAt);
+  const syncErrorCode = useSyncStore((state) => state.errorCode);
+  const syncErrorMessage = useSyncStore((state) => state.errorMessage);
   const isConnected = useConnectivityStore((state) => state.isConnected);
   const userId = useSessionStore((state) => state.userId);
   const email = useSessionStore((state) => state.email);
@@ -135,6 +137,10 @@ export const SettingsScreen = () => {
         </View>
         <View className="gap-2 rounded-3xl bg-background-muted px-4 py-4">
           <AppText variant="caption" tone="secondary">
+            Sync status
+          </AppText>
+          <AppText variant="bodyStrong">{syncStatus}</AppText>
+          <AppText variant="caption" tone="secondary">
             Connectivity
           </AppText>
           <AppText variant="bodyStrong">{isConnected ? "Online" : "Offline"}</AppText>
@@ -153,6 +159,16 @@ export const SettingsScreen = () => {
           loading={syncing}
         />
         {syncMessage ? <AppText tone="secondary">{syncMessage}</AppText> : null}
+        {syncErrorMessage ? (
+          <View className="gap-1 rounded-3xl border border-danger/20 bg-danger/10 px-4 py-4">
+            <AppText variant="caption" tone="secondary">
+              Last sync error
+            </AppText>
+            <AppText variant="bodyStrong">
+              {syncErrorCode ?? "unknown"}: {syncErrorMessage}
+            </AppText>
+          </View>
+        ) : null}
       </Card>
 
       <Card className="gap-4">
@@ -168,6 +184,31 @@ export const SettingsScreen = () => {
           </View>
         </View>
       </Card>
+
+      {__DEV__ ? (
+        <Card className="gap-4">
+          <View className="flex-1 gap-1">
+            <AppText variant="subtitle">Debug diagnostics</AppText>
+            <AppText tone="secondary">
+              Use this with the console logs to confirm auth identity, Firebase project, and the latest sync failure.
+            </AppText>
+          </View>
+          <View className="gap-2 rounded-3xl bg-background-muted px-4 py-4">
+            <AppText variant="caption" tone="secondary">
+              Firebase project
+            </AppText>
+            <AppText variant="bodyStrong">{APP_CONFIG.firebase.projectId || "Missing"}</AppText>
+            <AppText variant="caption" tone="secondary">
+              Debug hint
+            </AppText>
+            <AppText variant="bodyStrong">
+              {syncErrorCode === "permission-denied"
+                ? APP_MESSAGES.firestorePermissionDenied
+                : "Watch the console for [AegisFlow] auth/firestore/sync logs."}
+            </AppText>
+          </View>
+        </Card>
+      ) : null}
 
       {!hasFirebaseConfig ? (
         <ErrorState

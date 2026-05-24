@@ -9,12 +9,16 @@ interface SyncState {
   queue: AttachmentUploadQueueItem[];
   lastSyncedAt?: string;
   status: SyncStatus;
+  errorCode?: string;
+  errorMessage?: string;
   setHydrated: (hydrated: boolean) => void;
   enqueueUpload: (item: AttachmentUploadQueueItem) => void;
   markUploaded: (queueItemId: string) => void;
   markFailed: (queueItemId: string, errorMessage: string) => void;
   setStatus: (status: SyncStatus) => void;
   setLastSyncedAt: (timestamp: string) => void;
+  setError: (errorCode: string, errorMessage: string) => void;
+  clearError: () => void;
   clearQueue: () => void;
 }
 
@@ -25,6 +29,8 @@ export const useSyncStore = create<SyncState>()(
       queue: [],
       lastSyncedAt: undefined,
       status: "idle",
+      errorCode: undefined,
+      errorMessage: undefined,
       setHydrated: (hydrated) => set({ hydrated }),
       enqueueUpload: (item) =>
         set((state) => ({
@@ -58,10 +64,23 @@ export const useSyncStore = create<SyncState>()(
         })),
       setStatus: (status) => set({ status }),
       setLastSyncedAt: (lastSyncedAt) => set({ lastSyncedAt }),
+      setError: (errorCode, errorMessage) =>
+        set({
+          status: "error",
+          errorCode,
+          errorMessage,
+        }),
+      clearError: () =>
+        set({
+          errorCode: undefined,
+          errorMessage: undefined,
+        }),
       clearQueue: () =>
         set({
           queue: [],
           status: "idle",
+          errorCode: undefined,
+          errorMessage: undefined,
         }),
     }),
     {

@@ -6,11 +6,13 @@ import {
   orderBy,
   query,
   setDoc,
+  type FirestoreError,
   type QuerySnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
 
 import { getFirestoreDb } from "@/services/firebase/firebase-app";
+import { debugLogger } from "@/utils/debug";
 import type { BaseEntity, VaultItem } from "@/types/entities";
 import { buildVaultSecretKey } from "@/utils/vault";
 
@@ -21,6 +23,8 @@ interface SnapshotMeta {
 
 const collectionPath = (userId: string) =>
   collection(getFirestoreDb(), "users", userId, "vaultItems");
+
+const describeCollectionPath = (userId: string) => `users/${userId}/vaultItems`;
 
 const buildSyncState = (
   snapshot: QuerySnapshot,
@@ -68,23 +72,55 @@ export const vaultRepository = {
   subscribe(
     userId: string,
     onItems: (items: VaultItem[], meta: SnapshotMeta) => void,
+    onError?: (error: FirestoreError) => void,
   ): Unsubscribe {
+    debugLogger.log("firestore:vault", "starting snapshot listener", {
+      userId,
+      path: describeCollectionPath(userId),
+    });
+
     return onSnapshot(
       query(collectionPath(userId), orderBy("updatedAt", "desc")),
       (snapshot) => {
+        debugLogger.log("firestore:vault", "snapshot received", {
+          userId,
+          path: describeCollectionPath(userId),
+          count: snapshot.docs.length,
+          fromCache: snapshot.metadata.fromCache,
+          hasPendingWrites: snapshot.metadata.hasPendingWrites,
+        });
         onItems(mapVaultItems(userId, snapshot), {
           fromCache: snapshot.metadata.fromCache,
           hasPendingWrites: snapshot.metadata.hasPendingWrites,
         });
       },
+      (error) => {
+        debugLogger.error("firestore:vault", "snapshot listener failed", {
+          userId,
+          path: describeCollectionPath(userId),
+          code: error.code,
+          message: error.message,
+        });
+        onError?.(error);
+      },
     );
   },
 
   async upsertVaultItemAsync(item: VaultItem) {
+    debugLogger.log("firestore:vault", "upserting vault item", {
+      userId: item.userId,
+      itemId: item.id,
+      path: `${describeCollectionPath(item.userId)}/${item.id}`,
+    });
     await setDoc(doc(collectionPath(item.userId), item.id), serializeVaultItem(item));
   },
 
   async deleteVaultItemAsync(userId: string, itemId: string) {
+    debugLogger.log("firestore:vault", "deleting vault item", {
+      userId,
+      itemId,
+      path: `${describeCollectionPath(userId)}/${itemId}`,
+    });
     await deleteDoc(doc(collectionPath(userId), itemId));
   },
 };
