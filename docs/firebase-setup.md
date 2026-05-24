@@ -57,6 +57,19 @@ Map the Firebase config fields to `app.json` like this:
 - `storageBucket` -> `firebaseStorageBucket` (optional in the current app)
 - `measurementId` -> `firebaseMeasurementId` (optional)
 
+For your current Firebase project, these values are already placed in [app.json](/Users/rajatjangid/Desktop/the-app/app.json):
+
+- `firebaseApiKey`: `AIzaSyAAXrDyWGOfQFdemfWlHeptBmV1v6l1_S0`
+- `firebaseAuthDomain`: `theapp-a6775.firebaseapp.com`
+- `firebaseProjectId`: `theapp-a6775`
+- `firebaseStorageBucket`: `theapp-a6775.firebasestorage.app`
+- `firebaseMessagingSenderId`: `439465163758`
+- `firebaseAppId`: `1:439465163758:android:3450f10fa39e848db7ecff`
+
+Your Android package name in [app.json](/Users/rajatjangid/Desktop/the-app/app.json) is also aligned to your Firebase Android app:
+
+- `android.package`: `com.rajat.theapp`
+
 ## 4. Apply security rules
 
 Deploy [firestore.rules](/Users/rajatjangid/Desktop/the-app/firestore.rules) to your Firebase project.

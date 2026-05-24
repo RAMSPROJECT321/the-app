@@ -24,7 +24,7 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.circonomy.aegisflow"
+      "package": "com.rajat.theapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -46,12 +46,12 @@
     ],
     "extra": {
       "appName": "AegisFlow",
-      "firebaseApiKey": "",
-      "firebaseAuthDomain": "",
-      "firebaseProjectId": "",
-      "firebaseStorageBucket": "",
-      "firebaseMessagingSenderId": "",
-      "firebaseAppId": "",
+      "firebaseApiKey": "AIzaSyAAXrDyWGOfQFdemfWlHeptBmV1v6l1_S0",
+      "firebaseAuthDomain": "theapp-a6775.firebaseapp.com",
+      "firebaseProjectId": "theapp-a6775",
+      "firebaseStorageBucket": "theapp-a6775.firebasestorage.app",
+      "firebaseMessagingSenderId": "439465163758",
+      "firebaseAppId": "1:439465163758:android:3450f10fa39e848db7ecff",
       "firebaseMeasurementId": ""
     }
   }
