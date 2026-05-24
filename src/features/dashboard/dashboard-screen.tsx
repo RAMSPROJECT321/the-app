@@ -222,7 +222,7 @@ export const DashboardScreen = () => {
         <SectionHeader
           eyebrow="Protected context"
           title="Vault snapshot"
-          description="Sensitive entries stay local-first until encrypted sync is configured."
+          description="Firestore restores metadata quickly, while secret values remain on this device."
         />
         <View className="gap-4">
           {filteredRecentVaultItems.map((item) => (

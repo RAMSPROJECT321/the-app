@@ -18,8 +18,8 @@ import { useSessionStore } from "@/store/session-store";
 import { useTasksStore } from "@/store/tasks-store";
 import type { TaskPriority, TaskStatus } from "@/types/entities";
 import type { TasksStackParamList } from "@/types/navigation";
-import { createId } from "@/utils/id";
 import { formatDateTime } from "@/utils/date";
+import { createId } from "@/utils/id";
 
 type Props = NativeStackScreenProps<TasksStackParamList, "TaskDetail">;
 
@@ -57,7 +57,7 @@ export const TaskDetailScreen = ({ route }: Props) => {
     setStatus(task.status);
     setPriority(task.priority);
     setTagsText(task.tags.join(", "));
-  }, [taskId, task]);
+  }, [task]);
 
   const parsedTags = useMemo(
     () =>
@@ -74,7 +74,7 @@ export const TaskDetailScreen = ({ route }: Props) => {
         <EmptyState
           icon={Sparkles}
           title="Task not found"
-          description="This task may have been deleted locally before the detail screen opened."
+          description="This task may have been removed before the detail screen opened."
         />
       </Screen>
     );
@@ -91,31 +91,21 @@ export const TaskDetailScreen = ({ route }: Props) => {
   };
 
   const handleAttachment = () => {
-    Alert.alert("Local attachment warning", APP_MESSAGES.attachmentWarning, [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Continue",
-        onPress: () => {
-          void (async () => {
-            const file = await fileService.pickImageAttachmentAsync();
+    void (async () => {
+      const file = await fileService.pickImageAttachmentAsync();
 
-            if (!file) {
-              return;
-            }
+      if (!file) {
+        return;
+      }
 
-            addAttachment(taskId, {
-              id: createId("attachment"),
-              ...file,
-              localOnly: true,
-              warningAcceptedAt: new Date().toISOString(),
-            });
-          })();
-        },
-      },
-    ]);
+        addAttachment(taskId, {
+          id: createId("attachment"),
+          ...file,
+          createdAt: new Date().toISOString(),
+          syncState: "local_only",
+        });
+      Alert.alert("Attachment saved", APP_MESSAGES.attachmentQueued);
+    })();
   };
 
   return (
@@ -211,9 +201,7 @@ export const TaskDetailScreen = ({ route }: Props) => {
                 >
                   {item.completed ? <Check color="#F8FAFC" size={14} strokeWidth={2.4} /> : null}
                 </View>
-                <AppText
-                  className={item.completed ? "line-through opacity-60" : ""}
-                >
+                <AppText className={item.completed ? "line-through opacity-60" : ""}>
                   {item.label}
                 </AppText>
               </Pressable>
@@ -243,7 +231,7 @@ export const TaskDetailScreen = ({ route }: Props) => {
         <Card className="gap-4">
           <SectionHeader
             title="Voice and attachments"
-            description="Capture context fast, then keep local files clearly labeled as device-only."
+            description="Capture context fast, then keep images and files on this device for the current install."
           />
           <View className="flex-row gap-3">
             <AppButton
@@ -268,13 +256,16 @@ export const TaskDetailScreen = ({ route }: Props) => {
               >
                 <AppText variant="bodyStrong">{attachment.name}</AppText>
                 <AppText variant="caption" tone="secondary">
-                  Local file only · {Math.round(attachment.sizeInBytes / 1024)} KB
+                  {attachment.syncState === "local_only"
+                    ? "stored locally"
+                    : attachment.syncState.replace("_", " ")} ·{" "}
+                  {Math.round(attachment.sizeInBytes / 1024)} KB
                 </AppText>
               </View>
             ))}
             {!task.attachments.length ? (
               <AppText tone="secondary">
-                No local attachments yet. The app warns before adding device-only files.
+                No attachments yet. Pick an image and it will stay available on this device while the local file exists.
               </AppText>
             ) : null}
           </View>

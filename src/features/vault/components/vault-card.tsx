@@ -1,6 +1,6 @@
-import { Heart, Link2, ShieldCheck } from "lucide-react-native";
+import { Heart, Link2, PencilLine, ShieldCheck } from "lucide-react-native";
 import { memo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 
 import { AppText } from "@/components/app-text";
 import { Card } from "@/components/card";
@@ -12,9 +12,10 @@ import { formatRelativeTime } from "@/utils/date";
 interface VaultCardProps {
   item: VaultItem;
   onToggleFavorite: () => void;
+  onOpen: () => void;
 }
 
-export const VaultCard = memo(({ item, onToggleFavorite }: VaultCardProps) => (
+export const VaultCard = memo(({ item, onToggleFavorite, onOpen }: VaultCardProps) => (
   <Card className="gap-4 px-5 py-5">
     <View className="flex-row items-start justify-between gap-4">
       <View className="flex-1 gap-2">
@@ -35,11 +36,14 @@ export const VaultCard = memo(({ item, onToggleFavorite }: VaultCardProps) => (
           </AppText>
         ) : null}
       </View>
-      <IconButton
-        icon={Heart}
-        onPress={onToggleFavorite}
-        tone={item.isFavorite ? "accent" : "default"}
-      />
+      <View className="flex-row gap-2">
+        <IconButton icon={PencilLine} onPress={onOpen} />
+        <IconButton
+          icon={Heart}
+          onPress={onToggleFavorite}
+          tone={item.isFavorite ? "accent" : "default"}
+        />
+      </View>
     </View>
 
     {item.url ? (
@@ -59,7 +63,7 @@ export const VaultCard = memo(({ item, onToggleFavorite }: VaultCardProps) => (
 
     <View className="flex-row items-center justify-between gap-4">
       <AppText variant="caption" tone="secondary">
-        {item.syncMode === "local_only_secure" ? "Stored locally" : "Encrypted sync ready"}
+        {item.syncMode === "local_only_secure" ? "Stored locally" : "Metadata synced"}
       </AppText>
       <AppText variant="caption" tone="tertiary">
         Updated {formatRelativeTime(item.updatedAt)}

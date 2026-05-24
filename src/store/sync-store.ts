@@ -2,19 +2,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import type { SyncQueueItem, SyncStatus } from "@/types/sync";
+import type { AttachmentUploadQueueItem, SyncStatus } from "@/types/sync";
 
 interface SyncState {
   hydrated: boolean;
-  queue: SyncQueueItem[];
+  queue: AttachmentUploadQueueItem[];
   lastSyncedAt?: string;
   status: SyncStatus;
   setHydrated: (hydrated: boolean) => void;
-  enqueue: (item: SyncQueueItem) => void;
-  markSynced: (queueItemId: string) => void;
+  enqueueUpload: (item: AttachmentUploadQueueItem) => void;
+  markUploaded: (queueItemId: string) => void;
   markFailed: (queueItemId: string, errorMessage: string) => void;
   setStatus: (status: SyncStatus) => void;
   setLastSyncedAt: (timestamp: string) => void;
+  clearQueue: () => void;
 }
 
 export const useSyncStore = create<SyncState>()(
@@ -25,20 +26,21 @@ export const useSyncStore = create<SyncState>()(
       lastSyncedAt: undefined,
       status: "idle",
       setHydrated: (hydrated) => set({ hydrated }),
-      enqueue: (item) =>
+      enqueueUpload: (item) =>
         set((state) => ({
           queue: [
             item,
             ...state.queue.filter(
               (queued) =>
                 !(
-                  queued.entityId === item.entityId &&
-                  queued.entityType === item.entityType
+                  queued.userId === item.userId &&
+                  queued.taskId === item.taskId &&
+                  queued.attachmentId === item.attachmentId
                 ),
             ),
           ],
         })),
-      markSynced: (queueItemId) =>
+      markUploaded: (queueItemId) =>
         set((state) => ({
           queue: state.queue.filter((item) => item.id !== queueItemId),
         })),
@@ -56,6 +58,11 @@ export const useSyncStore = create<SyncState>()(
         })),
       setStatus: (status) => set({ status }),
       setLastSyncedAt: (lastSyncedAt) => set({ lastSyncedAt }),
+      clearQueue: () =>
+        set({
+          queue: [],
+          status: "idle",
+        }),
     }),
     {
       name: "sync-store",
@@ -63,6 +70,10 @@ export const useSyncStore = create<SyncState>()(
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
       },
+      partialize: (state) => ({
+        queue: state.queue,
+        lastSyncedAt: state.lastSyncedAt,
+      }),
     },
   ),
 );

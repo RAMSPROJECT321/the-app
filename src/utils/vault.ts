@@ -9,3 +9,6 @@ export const maskSecret = (value: string) => {
 
   return `${"•".repeat(Math.max(value.length - 4, 4))}${value.slice(-4)}`;
 };
+
+export const buildVaultSecretKey = (userId: string, itemId: string) =>
+  `${userId}:${itemId}`;

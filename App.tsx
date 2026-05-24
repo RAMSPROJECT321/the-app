@@ -13,10 +13,15 @@ import { AppNavigator } from "@/navigation/app-navigator";
 import { syncService } from "@/services/sync/sync.service";
 import { useConnectivityStore } from "@/store/connectivity-store";
 import { useSessionStore } from "@/store/session-store";
+import { useSyncStore } from "@/store/sync-store";
+import { useTasksStore } from "@/store/tasks-store";
 
 export default function App() {
   const ready = useAppBootstrap();
   const { palette, resolvedTheme } = useAppTheme();
+  const authResolved = useSessionStore((state) => state.authResolved);
+  const authStatus = useSessionStore((state) => state.authStatus);
+  const userId = useSessionStore((state) => state.userId);
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(palette.background);
@@ -29,7 +34,11 @@ export default function App() {
       const isConnected = Boolean(state.isConnected);
       useConnectivityStore.getState().setConnected(isConnected);
 
-      if (!wasConnected && isConnected) {
+      if (
+        !wasConnected &&
+        isConnected &&
+        useSessionStore.getState().authStatus === "authenticated"
+      ) {
         void syncService.syncNowAsync();
       }
 
@@ -42,7 +51,10 @@ export default function App() {
         return;
       }
 
-      if (useConnectivityStore.getState().isConnected) {
+      if (
+        useConnectivityStore.getState().isConnected &&
+        useSessionStore.getState().authStatus === "authenticated"
+      ) {
         void syncService.syncNowAsync();
       }
     });
@@ -52,6 +64,21 @@ export default function App() {
       appStateSubscription.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (!authResolved) {
+      return;
+    }
+
+    if (authStatus === "authenticated" && userId) {
+      void useTasksStore.getState().pruneMissingAttachmentsAsync();
+      void syncService.startRealtimeSyncAsync(userId);
+      return;
+    }
+
+    syncService.stopRealtimeSync();
+    useSyncStore.getState().clearQueue();
+  }, [authResolved, authStatus, userId]);
 
   if (!ready) {
     return null;

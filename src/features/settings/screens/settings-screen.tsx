@@ -1,8 +1,7 @@
-import { CloudOff, MoonStar, ShieldCheck } from "lucide-react-native";
+import { Cloud, CloudOff, LogOut, MoonStar, ShieldCheck } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 
-import { APP_CONFIG } from "@/constants/app";
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
 import { Card } from "@/components/card";
@@ -10,23 +9,33 @@ import { Chip } from "@/components/chip";
 import { ErrorState } from "@/components/error-state";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
+import { APP_MESSAGES, hasFirebaseConfig } from "@/constants/app";
+import { authService } from "@/services/auth/auth.service";
 import { syncService } from "@/services/sync/sync.service";
 import { useConnectivityStore } from "@/store/connectivity-store";
 import { useSessionStore } from "@/store/session-store";
 import { useSyncStore } from "@/store/sync-store";
+import { useTasksStore } from "@/store/tasks-store";
 import { useThemeStore } from "@/store/theme-store";
 
 export const SettingsScreen = () => {
   const preference = useThemeStore((state) => state.preference);
   const setPreference = useThemeStore((state) => state.setPreference);
   const syncStatus = useSyncStore((state) => state.status);
-  const queue = useSyncStore((state) => state.queue);
   const lastSyncedAt = useSyncStore((state) => state.lastSyncedAt);
   const isConnected = useConnectivityStore((state) => state.isConnected);
   const userId = useSessionStore((state) => state.userId);
+  const email = useSessionStore((state) => state.email);
   const deviceId = useSessionStore((state) => state.deviceId);
+  const localAttachmentCount = useTasksStore((state) =>
+    state.taskIds.reduce((count, taskId) => {
+      const task = state.tasksById[taskId];
+      return task?.userId === userId ? count + task.attachments.length : count;
+    }, 0),
+  );
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleSyncNow = async () => {
     setSyncing(true);
@@ -35,12 +44,22 @@ export const SettingsScreen = () => {
     setSyncing(false);
   };
 
+  const handleSignOut = async () => {
+    setSigningOut(true);
+
+    try {
+      await authService.signOutAsync();
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   return (
     <Screen>
       <SectionHeader
         eyebrow="Foundation controls"
         title="Settings"
-        description="Theme, sync, and security defaults are centralized here for future expansion."
+        description="Theme, sync, authentication, and vault defaults are centralized here for future expansion."
       />
 
       <Card className="gap-4">
@@ -73,22 +92,33 @@ export const SettingsScreen = () => {
             <ShieldCheck color="#0F766E" size={20} strokeWidth={2.2} />
           </View>
           <View className="flex-1 gap-1">
-            <AppText variant="subtitle">Security model</AppText>
+            <AppText variant="subtitle">Account and device</AppText>
             <AppText tone="secondary">
-              Vault data uses biometric gating and device secure storage.
+              Firebase Auth scopes each user while secure local storage protects secrets on this device.
             </AppText>
           </View>
         </View>
         <View className="gap-2 rounded-3xl bg-background-muted px-4 py-4">
           <AppText variant="caption" tone="secondary">
+            Email
+          </AppText>
+          <AppText variant="bodyStrong">{email ?? "Not available"}</AppText>
+          <AppText variant="caption" tone="secondary">
             User ID
           </AppText>
-          <AppText variant="bodyStrong">{userId}</AppText>
+          <AppText variant="bodyStrong">{userId ?? "Not signed in"}</AppText>
           <AppText variant="caption" tone="secondary">
             Device ID
           </AppText>
           <AppText variant="bodyStrong">{deviceId}</AppText>
         </View>
+        <AppButton
+          label="Sign out"
+          onPress={() => void handleSignOut()}
+          icon={LogOut}
+          variant="secondary"
+          loading={signingOut}
+        />
       </Card>
 
       <Card className="gap-4">
@@ -97,9 +127,9 @@ export const SettingsScreen = () => {
             <CloudOff color="#D27B2C" size={20} strokeWidth={2.2} />
           </View>
           <View className="flex-1 gap-1">
-            <AppText variant="subtitle">Local sync queue</AppText>
+            <AppText variant="subtitle">Realtime sync</AppText>
             <AppText tone="secondary">
-              Multi-user-ready payloads are staged locally until Apps Script is configured.
+              Firestore handles document sync. Attachments stay local on this device and do not sync through Firebase.
             </AppText>
           </View>
         </View>
@@ -109,9 +139,9 @@ export const SettingsScreen = () => {
           </AppText>
           <AppText variant="bodyStrong">{isConnected ? "Online" : "Offline"}</AppText>
           <AppText variant="caption" tone="secondary">
-            Queue size
+            Local attachments
           </AppText>
-          <AppText variant="bodyStrong">{queue.length} pending operations</AppText>
+          <AppText variant="bodyStrong">{localAttachmentCount} files</AppText>
           <AppText variant="caption" tone="secondary">
             Last synced
           </AppText>
@@ -122,15 +152,27 @@ export const SettingsScreen = () => {
           onPress={() => void handleSyncNow()}
           loading={syncing}
         />
-        {syncMessage ? (
-          <AppText tone="secondary">{syncMessage}</AppText>
-        ) : null}
+        {syncMessage ? <AppText tone="secondary">{syncMessage}</AppText> : null}
       </Card>
 
-      {!APP_CONFIG.googleAppsScriptBaseUrl ? (
+      <Card className="gap-4">
+        <View className="flex-row items-center gap-3">
+          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft">
+            <Cloud color="#3778FF" size={20} strokeWidth={2.2} />
+          </View>
+          <View className="flex-1 gap-1">
+            <AppText variant="subtitle">Backend model</AppText>
+            <AppText tone="secondary">
+              Firebase Auth scopes each user. Firestore syncs tasks and vault metadata. Attachments stay local to the current device.
+            </AppText>
+          </View>
+        </View>
+      </Card>
+
+      {!hasFirebaseConfig ? (
         <ErrorState
-          title="Apps Script not configured"
-          description="Add the Apps Script /exec URL, shared secret, and stable appUserId in app config to enable sheet-backed sync."
+          title="Firebase not configured"
+          description={APP_MESSAGES.missingFirebaseConfig}
         />
       ) : null}
     </Screen>

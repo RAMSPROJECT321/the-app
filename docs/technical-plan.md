@@ -1,116 +1,92 @@
 # AegisFlow Technical Plan
 
-## Product Direction
+## Architecture Summary
 
-AegisFlow is a personal productivity and secure-vault mobile application built on Expo, React Native, and TypeScript. The initial foundation is optimized for a premium single-user experience while preserving multi-user-ready API contracts so the backend can evolve without forcing a client rewrite.
+AegisFlow now uses a Firebase-first mobile architecture:
 
-## Architecture Decisions
+- `Firebase Auth` for email/password authentication
+- `Cloud Firestore` for tasks and vault metadata
+- `Expo SecureStore` for plaintext vault secrets on-device
+- `Zustand` for app state, local attachment persistence, and UI state
+- `NativeWind` and shared theme tokens for UI consistency
 
-- Use feature-first modules under `src/features` and reserve top-level folders for cross-cutting code.
-- Keep screens thin: state selection, navigation, and event wiring only.
-- Push side effects into `services`, transport into `api`, and state mutation into small domain-specific Zustand stores.
-- Keep UI consistent through NativeWind plus a centralized design token system shared across navigation, components, and motion.
-- Treat local storage as the primary read source and background sync as an enhancement layer.
+The app is local-first:
 
-## Google Sheets + Apps Script API Strategy
+- Zustand rehydrates persisted task, vault, and sync state immediately on restart
+- Firestore listeners restore cached documents and continue syncing in the background
+- offline document changes are handled by Firestore automatically
+- local attachment paths remain available on the same device while the underlying file still exists
 
-The mobile app talks only to Google Apps Script, never to Sheets directly.
+## Data Model
 
-### Endpoint Model
+### Firestore
 
-- `POST /tasks/list`
-- `POST /tasks/upsert`
-- `POST /tasks/delete`
-- `POST /vault/list`
-- `POST /vault/upsert`
-- `POST /vault/delete`
-- `POST /sync/pull`
-- `POST /sync/push`
-- `POST /health`
+- `users/{uid}/tasks/{taskId}`
+- `users/{uid}/vaultItems/{vaultItemId}`
 
-### Request Envelope
+### Vault Security
 
-- `requestId`
-- `userId`
-- `deviceId`
-- `lastSyncedAt`
-- `payload`
+Vault items sync only metadata:
 
-### Response Envelope
+- title
+- category
+- username
+- url
+- notes
+- masked secret preview
+- favorite state
 
-- `success`
-- `data`
-- `serverTime`
-- `syncToken`
-- `error`
+Plaintext secrets are not stored in Firestore. They remain in SecureStore using a stable local key derived from `uid:itemId`.
 
-### Data Model Strategy
+## Runtime Flow
 
-- Keep rows flat and include `id`, `userId`, `updatedAt`, `deletedAt`, `version`, and `syncState`.
-- Use JSON strings only for nested fields that cannot be flattened reasonably.
-- Use soft deletes to preserve sync safety.
-- Use `updatedAt` plus `version` for optimistic conflict handling.
+### Authentication
 
-## State Management Flow
+1. App boot hydrates persisted local state.
+2. Firebase Auth restores the last signed-in user.
+3. If authenticated, the app opens the main shell and starts Firestore listeners.
+4. If unauthenticated, the app opens the auth stack.
 
-- `useTasksStore` owns task entities, ordering, filters, optimistic mutations, and task detail mutations.
-- `useVaultStore` owns vault metadata, secure references, and local save/delete flows.
-- `useSyncStore` owns queued mutations, sync status, and retry metadata.
-- `useSessionStore` owns device identity, vault lock state, and idle timeout behavior.
-- `useThemeStore` owns theme preference and integrates with NativeWind color-scheme control.
-- `useConnectivityStore` owns online/offline state for sync orchestration.
+### Tasks
 
-## Reusable UI Strategy
+- CRUD actions update Zustand immediately
+- writes are sent directly to Firestore
+- Firestore offline persistence keeps writes queued when offline
+- query listeners refresh task state from cache/server
 
-Shared UI components live in `src/components` and expose typed variants:
+### Attachments
 
-- `Screen`
-- `AppText`
-- `AppButton`
-- `IconButton`
-- `Card`
-- `TextField`
-- `SearchInput`
-- `SectionHeader`
-- `Chip`
-- `StatusBadge`
-- `EmptyState`
-- `ErrorState`
-- `SkeletonBlock`
-- `VoiceFab`
+1. User picks an image from the device.
+2. The file is copied into the app document directory.
+3. Attachment metadata and local path are persisted on-device with the task store.
+4. On restart or same-device sign-in, the app reuses that local path if the file still exists.
+5. Missing files are pruned from the local task state.
 
-Feature-specific cards and compositions stay inside their feature modules until reused elsewhere.
+### Vault
 
-## Performance Strategy
+- metadata is written to Firestore
+- secret value is written to SecureStore
+- revealing/copying a secret always reads from SecureStore on the current device
 
-- Functional components only.
-- `memo` for stable list cards and dense presentation components.
-- `useCallback` only for memoized child props and list handlers.
-- `useMemo` for expensive filters, selectors, and dashboard summaries.
-- `useDeferredValue` for search-driven list filtering.
-- `FlatList` for any growing collection.
-- Animated micro-interactions handled by Reanimated to avoid JS-thread-heavy transitions.
-- Avoid broad Zustand subscriptions and read only the state each component needs.
+## Key Boundaries
 
-## Security Strategy
+- `src/services/auth/` owns authentication flows
+- `src/services/firebase/` owns Firebase initialization
+- `src/services/repositories/` owns Firestore persistence
+- `src/services/sync/` owns realtime listeners and foreground sync triggers
+- `src/store/` owns app state and optimistic updates
+- `src/features/` owns feature-specific UI and interaction flow
 
-- Use `expo-local-authentication` to gate vault access with biometrics.
-- Store vault secrets separately from visible metadata using `expo-secure-store`.
-- Avoid persisting revealed plaintext values in global state.
-- Keep copied values ephemeral and route all copy actions through a single service boundary.
-- Treat cloud vault sync as unsafe until client-side encryption key management is defined.
+## Offline Strategy
 
-## Offline And Caching Strategy
+- Firestore handles offline reads and document writes
+- Zustand persistence keeps UI state warm across restart
+- task attachments remain device-local and survive while the copied local file survives
+- reconnect and app foreground both trigger sync attempts
 
-- Persist local state first.
-- Queue mutations in `useSyncStore`.
-- Retry background sync on app foreground and network reconnect.
-- Mark every entity as `synced`, `pending`, `failed`, or `local_only`.
-- Keep attachments local-only for now and warn users before adding them.
+## Future Extensions
 
-## Future Scalability
-
-- Preserve repository-like service boundaries so Sheets can be replaced later.
-- Reserve `userId`, `deviceId`, `syncToken`, and `version` in all contracts.
-- Keep authentication behind an `AuthService` boundary for future Google Sign-In, passkeys, or a custom backend.
-- Design attachments and vault sync so they can migrate to Drive or a real object store without screen rewrites.
+- add social login providers to Firebase Auth
+- add shared workspaces or team data by introducing scoped collections
+- add client-side encryption before cloud sync if cross-device secret recovery is needed
+- add push notifications or server-side workflows through Cloud Functions when required

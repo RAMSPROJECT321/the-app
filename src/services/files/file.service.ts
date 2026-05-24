@@ -16,6 +16,10 @@ const ensureAttachmentDirectoryAsync = async () => {
 };
 
 export const fileService = {
+  async attachmentExistsAsync(localUri: string) {
+    const info = await FileSystem.getInfoAsync(localUri);
+    return info.exists;
+  },
   async pickImageAttachmentAsync() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 

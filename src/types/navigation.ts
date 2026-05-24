@@ -2,6 +2,12 @@ export type HomeStackParamList = {
   Home: undefined;
 };
 
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
+};
+
 export type TasksStackParamList = {
   Tasks: undefined;
   TaskDetail: {
@@ -11,6 +17,9 @@ export type TasksStackParamList = {
 
 export type VaultStackParamList = {
   Vault: undefined;
+  VaultEditor: {
+    itemId?: string;
+  };
 };
 
 export type SettingsStackParamList = {
@@ -25,5 +34,6 @@ export type AppTabParamList = {
 };
 
 export type RootStackParamList = {
+  Auth: undefined;
   AppTabs: undefined;
 };

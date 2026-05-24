@@ -6,6 +6,7 @@ import { Pressable, View } from "react-native";
 
 import { AppText } from "@/components/app-text";
 import { IconButton } from "@/components/icon-button";
+import { APP_MESSAGES } from "@/constants/app";
 import { secureStorageService } from "@/services/secure/secure-storage.service";
 
 interface SecretFieldProps {
@@ -28,7 +29,7 @@ export const SecretField = ({
     }
 
     const secret = await secureStorageService.getVaultSecret(secretRef);
-    setRevealedValue(secret ?? "Unavailable");
+    setRevealedValue(secret ?? APP_MESSAGES.vaultSecretUnavailable);
   };
 
   const handleCopy = async () => {

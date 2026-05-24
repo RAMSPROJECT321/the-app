@@ -1,8 +1,8 @@
 import { KeyRound, LockKeyhole, ShieldCheck } from "lucide-react-native";
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import { APP_MESSAGES } from "@/constants/app";
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
 import { Card } from "@/components/card";
@@ -16,6 +16,7 @@ import { biometricService } from "@/services/auth/biometric.service";
 import { useSessionStore } from "@/store/session-store";
 import { useVaultStore } from "@/store/vault-store";
 import type { VaultCategory, VaultItem } from "@/types/entities";
+import type { VaultStackParamList } from "@/types/navigation";
 
 const categories: Array<"all" | VaultCategory> = [
   "all",
@@ -26,7 +27,9 @@ const categories: Array<"all" | VaultCategory> = [
   "secure_text",
 ];
 
-export const VaultScreen = () => {
+type Props = NativeStackScreenProps<VaultStackParamList, "Vault">;
+
+export const VaultScreen = ({ navigation }: Props) => {
   const vaultUnlocked = useSessionStore((state) => state.vaultUnlocked);
   const unlockVault = useSessionStore((state) => state.unlockVault);
   const userId = useSessionStore((state) => state.userId);
@@ -58,7 +61,9 @@ export const VaultScreen = () => {
       })
       .filter((item) => {
         const matchesQuery = normalizedQuery
-          ? `${item.title} ${item.notes ?? ""} ${item.category}`.toLowerCase().includes(normalizedQuery)
+          ? `${item.title} ${item.notes ?? ""} ${item.category}`
+              .toLowerCase()
+              .includes(normalizedQuery)
           : true;
         const matchesCategory = category === "all" ? true : item.category === category;
         return matchesQuery && matchesCategory;
@@ -75,9 +80,13 @@ export const VaultScreen = () => {
 
   const renderVaultItem = useCallback(
     ({ item }: { item: VaultItem }) => (
-      <VaultCard item={item} onToggleFavorite={() => toggleFavorite(item.id)} />
+      <VaultCard
+        item={item}
+        onToggleFavorite={() => toggleFavorite(item.id)}
+        onOpen={() => navigation.navigate("VaultEditor", { itemId: item.id })}
+      />
     ),
-    [toggleFavorite],
+    [navigation, toggleFavorite],
   );
 
   if (!vaultUnlocked) {
@@ -93,10 +102,14 @@ export const VaultScreen = () => {
               Secure entries stay hidden until a biometric check passes on this device.
             </AppText>
             <AppText variant="caption" tone="tertiary">
-              {APP_MESSAGES.missingAppsScript}
+              Firebase restores synced metadata after sign-in. Plaintext secrets stay local to this device.
             </AppText>
           </View>
-          <AppButton label="Unlock vault" onPress={() => void handleUnlock()} icon={ShieldCheck} />
+          <AppButton
+            label="Unlock vault"
+            onPress={() => void handleUnlock()}
+            icon={ShieldCheck}
+          />
         </Card>
       </Screen>
     );
@@ -106,9 +119,9 @@ export const VaultScreen = () => {
     <Screen scrollable={false} contentClassName="pb-0">
       <View className="gap-6 px-5 pb-4 pt-6">
         <SectionHeader
-          eyebrow="Secure local storage"
+          eyebrow="Secure vault"
           title="Vault"
-          description="Passwords, API keys, URLs, and private notes stay behind the device lock."
+          description="Passwords, API keys, URLs, and private notes stay behind the device lock while metadata syncs through Firestore."
         />
 
         <Card className="gap-4">
@@ -131,13 +144,17 @@ export const VaultScreen = () => {
             <View className="flex-row items-center gap-3">
               <KeyRound color="#0F766E" size={18} strokeWidth={2.2} />
               <View className="flex-1 gap-1">
-                <AppText variant="bodyStrong">Local-first protection</AppText>
+                <AppText variant="bodyStrong">Metadata sync with local secrets</AppText>
                 <AppText variant="caption" tone="secondary">
-                  Secrets are stored in device secure storage. Vault sync remains local until encrypted sync is defined.
+                  Firestore syncs titles, notes, and categories. The revealed secret value remains in secure local storage.
                 </AppText>
               </View>
             </View>
           </View>
+          <AppButton
+            label="Add entry"
+            onPress={() => navigation.navigate("VaultEditor", {})}
+          />
         </Card>
       </View>
 
@@ -154,7 +171,9 @@ export const VaultScreen = () => {
           <EmptyState
             icon={ShieldCheck}
             title="No secure entries match"
-            description="Change the search or category filter, or add a new vault entry from the store action layer."
+            description="Change the search or category filter, or create a new vault entry."
+            actionLabel="Create entry"
+            onActionPress={() => navigation.navigate("VaultEditor", {})}
           />
         }
       />

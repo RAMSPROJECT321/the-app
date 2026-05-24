@@ -1,12 +1,14 @@
-export type SyncEntityType = "task" | "vault";
-export type SyncOperation = "upsert" | "delete";
 export type SyncStatus = "idle" | "syncing" | "error" | "offline";
 
-export interface SyncQueueItem {
+export interface AttachmentUploadQueueItem {
   id: string;
-  entityId: string;
-  entityType: SyncEntityType;
-  operation: SyncOperation;
+  userId: string;
+  taskId: string;
+  attachmentId: string;
+  localUri: string;
+  name: string;
+  mimeType: string;
+  sizeInBytes: number;
   updatedAt: string;
   attemptCount: number;
   errorMessage?: string;

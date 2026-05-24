@@ -46,9 +46,13 @@
     ],
     "extra": {
       "appName": "AegisFlow",
-      "googleAppsScriptBaseUrl": "",
-      "googleAppsScriptSharedSecret": "",
-      "appUserId": "demo-user"
+      "firebaseApiKey": "",
+      "firebaseAuthDomain": "",
+      "firebaseProjectId": "",
+      "firebaseStorageBucket": "",
+      "firebaseMessagingSenderId": "",
+      "firebaseAppId": "",
+      "firebaseMeasurementId": ""
     }
   }
 }

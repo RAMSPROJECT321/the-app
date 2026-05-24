@@ -14,8 +14,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef, useState } from "react";
 
-import { APP_CONFIG } from "@/constants/app";
-import { syncService } from "@/services/sync/sync.service";
+import { authService } from "@/services/auth/auth.service";
 import { useSessionStore } from "@/store/session-store";
 import { useSyncStore } from "@/store/sync-store";
 import { useTasksStore } from "@/store/tasks-store";
@@ -57,16 +56,9 @@ export const useAppBootstrap = () => {
 
     const bootstrapAsync = async () => {
       useSessionStore.getState().ensureDeviceId();
-
-      if (!APP_CONFIG.googleAppsScriptBaseUrl) {
-        useTasksStore.getState().seedDemoDataIfEmpty();
-        await useVaultStore.getState().seedDemoDataAsyncIfEmpty();
-      }
-
+      await authService.initializeAsync();
       setReady(true);
       await SplashScreen.hideAsync();
-
-      void syncService.initializeDataAsync();
     };
 
     void bootstrapAsync();

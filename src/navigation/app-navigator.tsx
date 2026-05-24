@@ -1,22 +1,23 @@
-import {
-  Home,
-  ListTodo,
-  Settings,
-  ShieldEllipsis,
-} from "lucide-react-native";
-import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Home, ListTodo, Settings, ShieldEllipsis } from "lucide-react-native";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { LoginScreen } from "@/features/auth/screens/login-screen";
+import { RegisterScreen } from "@/features/auth/screens/register-screen";
+import { ForgotPasswordScreen } from "@/features/auth/screens/forgot-password-screen";
 import { DashboardScreen } from "@/features/dashboard/dashboard-screen";
 import { SettingsScreen } from "@/features/settings/screens/settings-screen";
 import { TaskDetailScreen } from "@/features/tasks/screens/task-detail-screen";
 import { TasksScreen } from "@/features/tasks/screens/tasks-screen";
 import { VaultScreen } from "@/features/vault/screens/vault-screen";
+import { VaultEditorScreen } from "@/features/vault/screens/vault-editor-screen";
 import { createNavigationTheme } from "@/navigation/navigation-theme";
+import { useSessionStore } from "@/store/session-store";
 import type {
   AppTabParamList,
+  AuthStackParamList,
   HomeStackParamList,
   RootStackParamList,
   SettingsStackParamList,
@@ -26,6 +27,7 @@ import type {
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const TasksStack = createNativeStackNavigator<TasksStackParamList>();
 const VaultStack = createNativeStackNavigator<VaultStackParamList>();
@@ -40,6 +42,14 @@ const tabBarStyle = {
   paddingTop: 10,
   paddingBottom: 16,
 };
+
+const AuthStackNavigator = () => (
+  <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+    <AuthStack.Screen name="Login" component={LoginScreen} />
+    <AuthStack.Screen name="Register" component={RegisterScreen} />
+    <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+  </AuthStack.Navigator>
+);
 
 const HomeStackNavigator = () => (
   <HomeStack.Navigator screenOptions={{ headerShown: false }}>
@@ -57,6 +67,7 @@ const TasksStackNavigator = () => (
 const VaultStackNavigator = () => (
   <VaultStack.Navigator screenOptions={{ headerShown: false }}>
     <VaultStack.Screen name="Vault" component={VaultScreen} />
+    <VaultStack.Screen name="VaultEditor" component={VaultEditorScreen} />
   </VaultStack.Navigator>
 );
 
@@ -80,9 +91,7 @@ const TabNavigator = () => {
           fontFamily: "Manrope_700Bold",
           fontSize: 11,
         },
-        tabBarBackground: () => (
-          <></>
-        ),
+        tabBarBackground: () => <></>,
       }}
     >
       <Tab.Screen
@@ -129,11 +138,16 @@ const TabNavigator = () => {
 
 export const AppNavigator = () => {
   const { palette, resolvedTheme } = useAppTheme();
+  const authStatus = useSessionStore((state) => state.authStatus);
 
   return (
     <NavigationContainer theme={createNavigationTheme(palette, resolvedTheme)}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        <RootStack.Screen name="AppTabs" component={TabNavigator} />
+        {authStatus === "authenticated" ? (
+          <RootStack.Screen name="AppTabs" component={TabNavigator} />
+        ) : (
+          <RootStack.Screen name="Auth" component={AuthStackNavigator} />
+        )}
       </RootStack.Navigator>
     </NavigationContainer>
   );

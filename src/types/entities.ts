@@ -1,4 +1,10 @@
 export type EntitySyncState = "synced" | "pending" | "failed" | "local_only";
+export type AttachmentSyncState =
+  | "local_only"
+  | "local_pending"
+  | "uploading"
+  | "uploaded"
+  | "failed";
 
 export interface BaseEntity {
   id: string;
@@ -29,10 +35,13 @@ export interface TaskAttachment {
   id: string;
   name: string;
   mimeType: string;
-  localUri: string;
   sizeInBytes: number;
-  localOnly: true;
-  warningAcceptedAt: string;
+  createdAt: string;
+  syncState: AttachmentSyncState;
+  localUri?: string;
+  remotePath?: string;
+  remoteUrl?: string;
+  errorMessage?: string;
 }
 
 export interface Task extends BaseEntity {
@@ -53,7 +62,7 @@ export type VaultCategory =
   | "note"
   | "secure_text";
 
-export type VaultSyncMode = "local_only_secure" | "synced_encrypted";
+export type VaultSyncMode = "local_only_secure" | "metadata_synced";
 
 export interface VaultItem extends BaseEntity {
   title: string;

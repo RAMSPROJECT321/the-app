@@ -2,14 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import { buildDemoVaultSeeds } from "@/features/vault/data/demo-vault";
+import { vaultRepository } from "@/services/repositories/vault.repository";
 import { secureStorageService } from "@/services/secure/secure-storage.service";
 import { useSessionStore } from "@/store/session-store";
-import { useSyncStore } from "@/store/sync-store";
 import type { VaultCategory, VaultItem, VaultSyncMode } from "@/types/entities";
-import type { SyncQueueItem } from "@/types/sync";
 import { createId } from "@/utils/id";
-import { maskSecret } from "@/utils/vault";
+import { buildVaultSecretKey, maskSecret } from "@/utils/vault";
 
 interface SaveVaultInput {
   title: string;
@@ -24,29 +22,20 @@ interface SaveVaultInput {
 
 interface VaultState {
   hydrated: boolean;
-  seededDemoData: boolean;
   itemsById: Record<string, VaultItem>;
   itemIds: string[];
   setHydrated: (hydrated: boolean) => void;
-  seedDemoDataAsyncIfEmpty: () => Promise<void>;
   replaceAllFromRemote: (items: VaultItem[]) => void;
+  clearAll: () => void;
   saveVaultItemAsync: (input: SaveVaultInput, itemId?: string) => Promise<string>;
   deleteVaultItemAsync: (itemId: string) => Promise<void>;
   toggleFavorite: (itemId: string) => void;
 }
 
-const enqueueVaultMutation = (entityId: string, operation: SyncQueueItem["operation"]) => {
-  useSyncStore.getState().enqueue({
-    id: createId("sync"),
-    entityId,
-    entityType: "vault",
-    operation,
-    updatedAt: new Date().toISOString(),
-    attemptCount: 0,
-  });
-};
-
-const upsertVaultState = (state: VaultState, item: VaultItem) => {
+const upsertVaultState = (
+  state: Pick<VaultState, "itemsById" | "itemIds">,
+  item: VaultItem,
+) => {
   const exists = Boolean(state.itemsById[item.id]);
 
   return {
@@ -62,62 +51,33 @@ export const useVaultStore = create<VaultState>()(
   persist(
     (set, get) => ({
       hydrated: false,
-      seededDemoData: false,
       itemsById: {},
       itemIds: [],
       setHydrated: (hydrated) => set({ hydrated }),
-      seedDemoDataAsyncIfEmpty: async () => {
-        if (get().seededDemoData || get().itemIds.length > 0) {
-          return;
-        }
-
-        const userId = useSessionStore.getState().userId;
-        const now = new Date().toISOString();
-        const demoSeeds = buildDemoVaultSeeds();
-
-        for (const seed of demoSeeds) {
-          await secureStorageService.setVaultSecret(seed.id, seed.secret);
-        }
-
-        const items = demoSeeds.map<VaultItem>((seed) => ({
-          id: seed.id,
-          userId,
-          title: seed.title,
-          category: seed.category,
-          username: seed.username,
-          url: seed.url,
-          notes: seed.notes,
-          secretRef: seed.id,
-          secretPreview: maskSecret(seed.secret),
-          isFavorite: seed.isFavorite,
-          syncMode: seed.syncMode,
-          createdAt: now,
-          updatedAt: now,
-          version: 1,
-          syncState: "local_only",
-        }));
-
-        set({
-          seededDemoData: true,
-          itemsById: Object.fromEntries(items.map((item) => [item.id, item])),
-          itemIds: items.map((item) => item.id),
-        });
-      },
       replaceAllFromRemote: (items) =>
         set({
-          seededDemoData: false,
           itemsById: Object.fromEntries(items.map((item) => [item.id, item])),
           itemIds: items
             .slice()
             .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
             .map((item) => item.id),
         }),
+      clearAll: () =>
+        set({
+          itemsById: {},
+          itemIds: [],
+        }),
       saveVaultItemAsync: async (input, itemId) => {
         const userId = useSessionStore.getState().userId;
+
+        if (!userId) {
+          return "";
+        }
+
         const now = new Date().toISOString();
         const existing = itemId ? get().itemsById[itemId] : undefined;
         const nextItemId = itemId ?? createId("vault");
-        const secretRef = existing?.secretRef ?? createId("vault-secret");
+        const secretRef = buildVaultSecretKey(userId, nextItemId);
 
         await secureStorageService.setVaultSecret(secretRef, input.secret);
 
@@ -132,7 +92,7 @@ export const useVaultStore = create<VaultState>()(
           secretRef,
           secretPreview: maskSecret(input.secret),
           isFavorite: input.isFavorite ?? existing?.isFavorite ?? false,
-          syncMode: input.syncMode ?? existing?.syncMode ?? "local_only_secure",
+          syncMode: input.syncMode ?? existing?.syncMode ?? "metadata_synced",
           createdAt: existing?.createdAt ?? now,
           updatedAt: now,
           version: (existing?.version ?? 0) + 1,
@@ -142,7 +102,18 @@ export const useVaultStore = create<VaultState>()(
         set((state) => ({
           ...upsertVaultState(state, nextItem),
         }));
-        enqueueVaultMutation(nextItem.id, "upsert");
+
+        try {
+          await vaultRepository.upsertVaultItemAsync(nextItem);
+        } catch {
+          set((state) => ({
+            ...upsertVaultState(state, {
+              ...nextItem,
+              syncState: "failed",
+            }),
+          }));
+        }
+
         return nextItem.id;
       },
       deleteVaultItemAsync: async (itemId) => {
@@ -162,7 +133,17 @@ export const useVaultStore = create<VaultState>()(
             itemIds: state.itemIds.filter((id) => id !== itemId),
           };
         });
-        enqueueVaultMutation(itemId, "delete");
+
+        try {
+          await vaultRepository.deleteVaultItemAsync(item.userId, itemId);
+        } catch {
+          set((state) => ({
+            ...upsertVaultState(state, {
+              ...item,
+              syncState: "failed",
+            }),
+          }));
+        }
       },
       toggleFavorite: (itemId) => {
         const item = get().itemsById[itemId];
@@ -182,7 +163,14 @@ export const useVaultStore = create<VaultState>()(
         set((state) => ({
           ...upsertVaultState(state, nextItem),
         }));
-        enqueueVaultMutation(itemId, "upsert");
+        void vaultRepository.upsertVaultItemAsync(nextItem).catch(() => {
+          set((state) => ({
+            ...upsertVaultState(state, {
+              ...nextItem,
+              syncState: "failed",
+            }),
+          }));
+        });
       },
     }),
     {
@@ -191,6 +179,10 @@ export const useVaultStore = create<VaultState>()(
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
       },
+      partialize: (state) => ({
+        itemsById: state.itemsById,
+        itemIds: state.itemIds,
+      }),
     },
   ),
 );
