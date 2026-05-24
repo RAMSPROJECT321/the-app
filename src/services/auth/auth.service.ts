@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   type User,
-} from "@firebase/auth";
+} from "firebase/auth";
 
 import { APP_MESSAGES, hasFirebaseConfig } from "@/constants/app";
 import { getFirebaseAuthInstance } from "@/services/firebase/firebase-app";
