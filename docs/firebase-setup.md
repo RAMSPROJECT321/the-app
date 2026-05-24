@@ -27,7 +27,7 @@ Update `expo.extra` in [app.json](/Users/rajatjangid/Desktop/the-app/app.json):
 {
   "expo": {
     "extra": {
-      "appName": "AegisFlow",
+      "appName": "The App",
       "firebaseApiKey": "YOUR_API_KEY",
       "firebaseAuthDomain": "YOUR_PROJECT.firebaseapp.com",
       "firebaseProjectId": "YOUR_PROJECT_ID",

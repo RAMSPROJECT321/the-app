@@ -1,8 +1,8 @@
-# AegisFlow Technical Plan
+# The App Technical Plan
 
 ## Architecture Summary
 
-AegisFlow now uses a Firebase-first mobile architecture:
+The App now uses a Firebase-first mobile architecture:
 
 - `Firebase Auth` for email/password authentication
 - `Cloud Firestore` for tasks and vault metadata

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "AegisFlow",
-    "slug": "aegisflow",
+    "name": "The App",
+    "slug": "the-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#09141F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -45,7 +45,7 @@
       ]
     ],
     "extra": {
-      "appName": "AegisFlow",
+      "appName": "The App",
       "firebaseApiKey": "AIzaSyAAXrDyWGOfQFdemfWlHeptBmV1v6l1_S0",
       "firebaseAuthDomain": "theapp-a6775.firebaseapp.com",
       "firebaseProjectId": "theapp-a6775",

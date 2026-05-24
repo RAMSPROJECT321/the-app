@@ -14,7 +14,7 @@ type ExtraConfig = {
 const extra = (Constants.expoConfig?.extra ?? {}) as ExtraConfig;
 
 export const APP_CONFIG = {
-  appName: extra.appName ?? "AegisFlow",
+  appName: extra.appName ?? "The App",
   firebase: {
     apiKey: extra.firebaseApiKey ?? "",
     authDomain: extra.firebaseAuthDomain ?? "",

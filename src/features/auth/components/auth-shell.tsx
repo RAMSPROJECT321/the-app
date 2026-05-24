@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { AppText } from "@/components/app-text";
 import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
+import { APP_CONFIG } from "@/constants/app";
 
 interface AuthShellProps {
   title: string;
@@ -23,7 +24,7 @@ export const AuthShell = ({
       <View className="gap-6">
         <View className="gap-2">
           <AppText variant="label" tone="accent">
-            AegisFlow
+            {APP_CONFIG.appName}
           </AppText>
           <AppText variant="hero">{title}</AppText>
           <AppText tone="secondary">{description}</AppText>
