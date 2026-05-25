@@ -1,0 +1,37 @@
+{
+  "cli": {
+    "version": ">= 18.11.0"
+  },
+  "build": {
+    "local-debug": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleDebug"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "internal": {
+      "android": {
+        "track": "internal"
+      }
+    },
+    "production": {
+      "android": {
+        "track": "production"
+      }
+    }
+  }
+}
