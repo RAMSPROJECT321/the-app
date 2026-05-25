@@ -38,21 +38,31 @@ While logged into the new Expo account, create a personal access token here:
 
 Give it a clear name such as `the-app-local-machine`.
 
-### 3. Use the token only for this project
+### 3. Save the token only for this project
 
-In a terminal opened at this project root:
+Create a local file that is ignored by git:
 
 ```bash
-export EXPO_TOKEN=your_new_expo_token
+cp .env.example .env.eas.local
 ```
 
-Verify the active Expo identity for this terminal:
+Then replace the placeholder token in `.env.eas.local` with the Expo token from the `rams_eas` account.
+
+The repo's EAS wrapper script checks credentials in this order:
+
+1. `EXPO_TOKEN` already exported in the shell
+2. `.env.eas.local`
+3. `.env`
+
+If no token is found, EAS commands fail instead of falling back to the globally logged-in Expo account.
+
+Verify the active Expo identity:
 
 ```bash
 npm run eas:whoami
 ```
 
-If the username shown is the new Expo account, this project is isolated correctly.
+If the username shown is `rams_eas`, this project is isolated correctly.
 
 ### 4. Initialize the EAS project
 
@@ -66,8 +76,8 @@ This will link the repo to the new Expo account and create the EAS project assoc
 
 Important:
 
-- run this only with the new account token active
 - this is the step that determines which Expo account owns the EAS project
+- the wrapper script will automatically use `.env.eas.local`, so manual `export EXPO_TOKEN=...` is optional
 
 ### 5. Create Android managed credentials
 
@@ -182,8 +192,9 @@ On a different machine:
 
 1. clone the repo
 2. install dependencies
-3. export the same `EXPO_TOKEN` for the new Expo account
-4. run `npm run eas:whoami`
-5. run local or cloud EAS builds
+3. copy `.env.example` to `.env.eas.local`
+4. paste the same Expo token from the `rams_eas` account
+5. run `npm run eas:whoami`
+6. run local or cloud EAS builds
 
-No global Expo account switching is required if you use the token approach.
+No global Expo account switching is required if you use the token wrapper approach.

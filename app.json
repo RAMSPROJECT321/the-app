@@ -53,7 +53,11 @@
       "firebaseStorageBucket": "theapp-a6775.firebasestorage.app",
       "firebaseMessagingSenderId": "439465163758",
       "firebaseAppId": "1:439465163758:android:3450f10fa39e848db7ecff",
-      "firebaseMeasurementId": ""
-    }
+      "firebaseMeasurementId": "",
+      "eas": {
+        "projectId": "5f0c3721-f1f4-4242-848f-1a615519115f"
+      }
+    },
+    "owner": "rams_eas"
   }
 }

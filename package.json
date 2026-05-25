@@ -52,17 +52,17 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "eas:whoami": "npx eas-cli@latest whoami",
-    "eas:init": "npx eas-cli@latest init",
-    "eas:credentials": "npx eas-cli@latest credentials",
+    "eas:whoami": "sh ./scripts/eas-run.sh whoami",
+    "eas:init": "sh ./scripts/eas-run.sh init",
+    "eas:credentials": "sh ./scripts/eas-run.sh credentials",
     "android:dev": "expo run:android",
-    "android:debug:local": "npx eas-cli@latest build --platform android --profile local-debug --local",
-    "android:preview:local": "npx eas-cli@latest build --platform android --profile preview --local",
-    "android:preview:cloud": "npx eas-cli@latest build --platform android --profile preview",
-    "android:release:local": "npx eas-cli@latest build --platform android --profile production --local",
-    "android:release:cloud": "npx eas-cli@latest build --platform android --profile production",
-    "android:submit:internal": "npx eas-cli@latest submit --platform android --profile internal",
-    "android:submit:production": "npx eas-cli@latest submit --platform android --profile production"
+    "android:debug:local": "sh ./scripts/eas-run.sh build --platform android --profile local-debug --local",
+    "android:preview:local": "sh ./scripts/eas-run.sh build --platform android --profile preview --local",
+    "android:preview:cloud": "sh ./scripts/eas-run.sh build --platform android --profile preview",
+    "android:release:local": "sh ./scripts/eas-run.sh build --platform android --profile production --local",
+    "android:release:cloud": "sh ./scripts/eas-run.sh build --platform android --profile production",
+    "android:submit:internal": "sh ./scripts/eas-run.sh submit --platform android --profile internal",
+    "android:submit:production": "sh ./scripts/eas-run.sh submit --platform android --profile production"
   },
   "private": true
 }
