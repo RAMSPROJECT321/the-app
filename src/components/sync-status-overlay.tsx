@@ -1,6 +1,7 @@
 import { WifiOff, RefreshCw, AlertTriangle } from "lucide-react-native";
 import { View } from "react-native";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText } from "@/components/app-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -42,6 +43,7 @@ const overlayConfig = {
 
 export const SyncStatusOverlay = ({ status, message }: SyncStatusOverlayProps) => {
   const { palette } = useAppTheme();
+  const insets = useSafeAreaInsets();
 
   if (status === "idle") {
     return null;
@@ -67,7 +69,10 @@ export const SyncStatusOverlay = ({ status, message }: SyncStatusOverlayProps) =
       entering={FadeInDown.duration(220)}
       exiting={FadeOutUp.duration(180)}
       pointerEvents="none"
-      className="absolute left-5 right-5 top-4 z-50"
+      className="absolute left-5 right-5 z-50"
+      style={{
+        top: Math.max(insets.top + 8, 16),
+      }}
     >
       <View className={`rounded-[28px] border px-4 py-4 shadow-floating ${toneClasses}`}>
         <View className="flex-row items-start gap-3">
