@@ -51,48 +51,7 @@ const getSpeechModule = () => {
   }
 };
 
-const supportsOnDeviceRecognitionAsync = async (
-  module: ExpoSpeechRecognitionModuleType,
-) => {
-  if (Platform.OS === "ios") {
-    return true;
-  }
-
-  try {
-    const supportedLocales = await module.getSupportedLocales({});
-    return supportedLocales.installedLocales.includes(APP_CONFIG.defaultLocale);
-  } catch (error) {
-    debugLogger.warn("voice", "unable to inspect installed speech locales", {
-      error,
-    });
-    return false;
-  }
-};
-
-const getInstalledLocalesForServiceAsync = async (
-  module: ExpoSpeechRecognitionModuleType,
-  androidRecognitionServicePackage?: string,
-) => {
-  try {
-    const supportedLocales = await module.getSupportedLocales(
-      androidRecognitionServicePackage
-        ? {
-            androidRecognitionServicePackage,
-          }
-        : {},
-    );
-
-    return supportedLocales.installedLocales;
-  } catch (error) {
-    debugLogger.warn("voice", "unable to inspect installed speech locales", {
-      androidRecognitionServicePackage,
-      error,
-    });
-    return [];
-  }
-};
-
-const resolveAndroidRecognitionServiceAsync = async (
+const resolveAndroidRecognitionService = (
   module: ExpoSpeechRecognitionModuleType,
 ) => {
   const availableServices =
@@ -112,19 +71,6 @@ const resolveAndroidRecognitionServiceAsync = async (
   ).filter((service) =>
     availableServices.length ? availableServices.includes(service) : true,
   );
-
-  for (const service of orderedServices) {
-    const installedLocales = await getInstalledLocalesForServiceAsync(module, service);
-
-    if (installedLocales.includes(APP_CONFIG.defaultLocale)) {
-      return {
-        availableServices,
-        defaultService,
-        requiresOnDeviceRecognition: true,
-        servicePackage: service,
-      };
-    }
-  }
 
   return {
     availableServices,
@@ -164,18 +110,17 @@ class ExpoSpeechProvider implements SpeechProvider {
     }
 
     if (Platform.OS === "ios") {
-      const requiresOnDeviceRecognition = await supportsOnDeviceRecognitionAsync(module);
       debugLogger.log("voice", "starting speech recognition", {
         locale: APP_CONFIG.defaultLocale,
         platform: Platform.OS,
-        requiresOnDeviceRecognition,
+        requiresOnDeviceRecognition: true,
       });
 
       module.start({
         lang: APP_CONFIG.defaultLocale,
         interimResults: true,
         continuous: false,
-        requiresOnDeviceRecognition,
+        requiresOnDeviceRecognition: true,
         addsPunctuation: true,
         maxAlternatives: 1,
       });
@@ -187,7 +132,7 @@ class ExpoSpeechProvider implements SpeechProvider {
       defaultService,
       requiresOnDeviceRecognition,
       servicePackage,
-    } = await resolveAndroidRecognitionServiceAsync(module);
+    } = resolveAndroidRecognitionService(module);
 
     debugLogger.log("voice", "starting speech recognition", {
       locale: APP_CONFIG.defaultLocale,

@@ -9,11 +9,12 @@ import {
   Sparkles,
 } from "lucide-react-native";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
 import { Card } from "@/components/card";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Screen } from "@/components/screen";
 import { SearchInput } from "@/components/search-input";
 import { SectionHeader } from "@/components/section-header";
@@ -46,6 +47,8 @@ export const DashboardScreen = () => {
   const vaultItemsById = useVaultStore((state) => state.itemsById);
   const [searchQuery, setSearchQuery] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceTaskId, setVoiceTaskId] = useState<string | null>(null);
+  const [voiceSuccessVisible, setVoiceSuccessVisible] = useState(false);
   const [showSkeletons, setShowSkeletons] = useState(true);
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -146,11 +149,14 @@ export const DashboardScreen = () => {
   }, [tasks, vaultItems.length]);
 
   const handleVoiceApply = (transcript: string) => {
-    createTaskFromVoiceTranscript(transcript);
-    Alert.alert(
-      "Voice note captured",
-      "A new task was created from your transcript. You can refine it from the Tasks screen.",
-    );
+    const taskId = createTaskFromVoiceTranscript(transcript);
+
+    if (!taskId) {
+      return;
+    }
+
+    setVoiceTaskId(taskId);
+    setVoiceSuccessVisible(true);
   };
 
   const handleOpenTask = (taskId: string) => {
@@ -172,6 +178,16 @@ export const DashboardScreen = () => {
     navigation.navigate("VaultTab", {
       screen: "Vault",
     });
+  };
+
+  const handleOpenVoiceTask = () => {
+    if (!voiceTaskId) {
+      setVoiceSuccessVisible(false);
+      return;
+    }
+
+    setVoiceSuccessVisible(false);
+    handleOpenTask(voiceTaskId);
   };
 
   return (
@@ -290,6 +306,15 @@ export const DashboardScreen = () => {
         visible={voiceOpen}
         onClose={() => setVoiceOpen(false)}
         onApply={handleVoiceApply}
+      />
+      <ConfirmDialog
+        visible={voiceSuccessVisible}
+        title="Voice note captured"
+        description="A new task was created from your transcript. Open it now to refine the details."
+        confirmLabel="Open task"
+        cancelLabel="Stay here"
+        onConfirm={handleOpenVoiceTask}
+        onCancel={() => setVoiceSuccessVisible(false)}
       />
     </Screen>
   );
