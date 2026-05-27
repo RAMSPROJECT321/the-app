@@ -36,6 +36,7 @@ const handleRealtimeError = (
   useSyncStore
     .getState()
     .setError(error.code ?? "unknown", `${mapSyncErrorMessage(error.code)} (${scope})`);
+  useSyncStore.getState().markInitialScopeReady(scope);
 };
 
 const updateStatusFromSnapshot = (meta: {
@@ -91,6 +92,7 @@ export const syncService = {
 
     this.stopRealtimeSync();
     activeUserId = userId;
+    useSyncStore.getState().beginInitialLoad();
     useSyncStore.getState().clearError();
     debugLogger.log("sync", "starting realtime sync", { userId });
 
@@ -102,6 +104,7 @@ export const syncService = {
           preserveLocalSynced:
             meta.fromCache && !useConnectivityStore.getState().isConnected,
         });
+        useSyncStore.getState().markInitialScopeReady("tasks");
         updateStatusFromSnapshot(meta);
       },
       (error) => {
@@ -117,6 +120,7 @@ export const syncService = {
           preserveLocalSynced:
             meta.fromCache && !useConnectivityStore.getState().isConnected,
         });
+        useSyncStore.getState().markInitialScopeReady("vault");
         updateStatusFromSnapshot(meta);
       },
       (error) => {
@@ -143,6 +147,7 @@ export const syncService = {
     tasksUnsubscribe = null;
     vaultUnsubscribe = null;
     activeUserId = null;
+    useSyncStore.getState().resetInitialLoad();
   },
 
   async syncNowAsync() {

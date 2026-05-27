@@ -7,6 +7,8 @@ import { AppState, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useEffect } from "react";
 
+import { AppLoadingScreen } from "@/components/app-loading-screen";
+import { SyncStatusOverlay } from "@/components/sync-status-overlay";
 import { useAppBootstrap } from "@/hooks/use-app-bootstrap";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { AppNavigator } from "@/navigation/app-navigator";
@@ -15,6 +17,7 @@ import { useConnectivityStore } from "@/store/connectivity-store";
 import { useSessionStore } from "@/store/session-store";
 import { useSyncStore } from "@/store/sync-store";
 import { useTasksStore } from "@/store/tasks-store";
+import { useVaultStore } from "@/store/vault-store";
 
 export default function App() {
   const ready = useAppBootstrap();
@@ -22,6 +25,14 @@ export default function App() {
   const authResolved = useSessionStore((state) => state.authResolved);
   const authStatus = useSessionStore((state) => state.authStatus);
   const userId = useSessionStore((state) => state.userId);
+  const syncStatus = useSyncStore((state) => state.status);
+  const syncErrorMessage = useSyncStore((state) => state.errorMessage);
+  const initialLoadComplete = useSyncStore((state) => state.initialLoadComplete);
+  const taskIds = useTasksStore((state) => state.taskIds);
+  const tasksById = useTasksStore((state) => state.tasksById);
+  const vaultItemIds = useVaultStore((state) => state.itemIds);
+  const vaultItemsById = useVaultStore((state) => state.itemsById);
+  const isConnected = useConnectivityStore((state) => state.isConnected);
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(palette.background);
@@ -84,11 +95,45 @@ export default function App() {
     return null;
   }
 
+  const hasCachedWorkspaceData = Boolean(
+    userId &&
+      (taskIds.some((taskId) => tasksById[taskId]?.userId === userId) ||
+        vaultItemIds.some((itemId) => vaultItemsById[itemId]?.userId === userId)),
+  );
+  const showStartupLoader =
+    authStatus === "authenticated" &&
+    !initialLoadComplete &&
+    !hasCachedWorkspaceData;
+  const startupLoaderVariant =
+    !isConnected && !hasCachedWorkspaceData ? "offline" : "loading";
+  const startupLoaderTitle =
+    startupLoaderVariant === "offline"
+      ? "Offline startup"
+      : "Loading your workspace";
+  const startupLoaderDescription =
+    startupLoaderVariant === "offline"
+      ? "There is no cached workspace data on this device yet. Reconnect once so your latest tasks and vault metadata can be restored."
+      : "Tasks, secure metadata, and local state are being restored before the workspace opens.";
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <View style={themeVars} className="flex-1 bg-background">
         <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
-        <AppNavigator />
+        {showStartupLoader ? (
+          <AppLoadingScreen
+            title={startupLoaderTitle}
+            description={startupLoaderDescription}
+            variant={startupLoaderVariant}
+          />
+        ) : (
+          <>
+            <AppNavigator />
+            <SyncStatusOverlay
+              status={syncStatus}
+              message={syncStatus === "error" ? syncErrorMessage : undefined}
+            />
+          </>
+        )}
       </View>
     </GestureHandlerRootView>
   );
