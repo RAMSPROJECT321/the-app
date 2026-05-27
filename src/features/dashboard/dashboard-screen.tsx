@@ -3,18 +3,18 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   Archive,
-  ArrowUpRight,
   CheckCircle2,
   SearchCheck,
   ShieldCheck,
   Sparkles,
 } from "lucide-react-native";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
 import { Card } from "@/components/card";
+import { CardPressable } from "@/components/card-pressable";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Screen } from "@/components/screen";
 import { SearchInput } from "@/components/search-input";
@@ -257,27 +257,23 @@ export const DashboardScreen = () => {
         />
         <View className="gap-4">
           {filteredRecentTasks.map((task) => (
-            <Pressable key={task.id} onPress={() => handleOpenTask(task.id)}>
-              <Card className="gap-2 px-4 py-4 active:opacity-95">
-                <View className="flex-row items-center justify-between gap-3">
-                  <AppText variant="subtitle" className="flex-1">
-                    {task.title}
-                  </AppText>
-                  <AppText variant="caption" tone="secondary">
-                    {formatRelativeTime(task.updatedAt)}
-                  </AppText>
-                </View>
-                <AppText tone="secondary" numberOfLines={2}>
-                  {task.description}
+            <CardPressable
+              key={task.id}
+              className="gap-2 px-4 py-4"
+              onPress={() => handleOpenTask(task.id)}
+            >
+              <View className="flex-row items-center justify-between gap-3">
+                <AppText variant="subtitle" className="flex-1">
+                  {task.title}
                 </AppText>
-                <View className="flex-row items-center justify-end gap-1">
-                  <AppText variant="caption" tone="accent">
-                    Open task
-                  </AppText>
-                  <ArrowUpRight color="#0F766E" size={14} strokeWidth={2.2} />
-                </View>
-              </Card>
-            </Pressable>
+                <AppText variant="caption" tone="secondary">
+                  {formatRelativeTime(task.updatedAt)}
+                </AppText>
+              </View>
+              <AppText tone="secondary" numberOfLines={2}>
+                {task.description}
+              </AppText>
+            </CardPressable>
           ))}
         </View>
 
@@ -288,28 +284,24 @@ export const DashboardScreen = () => {
         />
         <View className="gap-4">
           {filteredRecentVaultItems.map((item) => (
-            <Pressable key={item.id} onPress={() => handleOpenVault(item.id)}>
-              <Card className="gap-3 px-4 py-4 active:opacity-95">
-                <View className="flex-row items-center justify-between gap-4">
-                  <View className="flex-1 gap-1">
-                    <AppText variant="subtitle">{item.title}</AppText>
-                    <AppText variant="caption" tone="secondary">
-                      {item.category.replace("_", " ")}
-                    </AppText>
-                  </View>
-                  <Archive color="#0F766E" size={18} strokeWidth={2.2} />
-                </View>
-                <AppText tone="secondary" numberOfLines={2}>
-                  {item.notes ?? "Local secure storage entry"}
-                </AppText>
-                <View className="flex-row items-center justify-end gap-1">
-                  <AppText variant="caption" tone="accent">
-                    Open vault item
+            <CardPressable
+              key={item.id}
+              className="gap-3 px-4 py-4"
+              onPress={() => handleOpenVault(item.id)}
+            >
+              <View className="flex-row items-center justify-between gap-4">
+                <View className="flex-1 gap-1">
+                  <AppText variant="subtitle">{item.title}</AppText>
+                  <AppText variant="caption" tone="secondary">
+                    {item.category.replace("_", " ")}
                   </AppText>
-                  <ArrowUpRight color="#0F766E" size={14} strokeWidth={2.2} />
                 </View>
-              </Card>
-            </Pressable>
+                <Archive color="#0F766E" size={18} strokeWidth={2.2} />
+              </View>
+              <AppText tone="secondary" numberOfLines={2}>
+                {item.notes ?? "Local secure storage entry"}
+              </AppText>
+            </CardPressable>
           ))}
         </View>
       </ScrollView>
