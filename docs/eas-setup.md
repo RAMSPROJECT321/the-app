@@ -52,9 +52,14 @@ The repo's EAS wrapper script checks credentials in this order:
 
 1. `EXPO_TOKEN` already exported in the shell
 2. `.env.eas.local`
-3. `.env`
 
 If no token is found, EAS commands fail instead of falling back to the globally logged-in Expo account.
+
+Important:
+
+- `.env` is intentionally ignored for EAS auth
+- keep the Expo token only in `.env.eas.local`
+- this prevents a stale or unrelated token in `.env` from hijacking builds
 
 Verify the active Expo identity:
 

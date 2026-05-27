@@ -28,6 +28,16 @@ read_token_from_file() {
   printf '%s' "$token_value"
 }
 
+file_has_token() {
+  token_file="$1"
+
+  if [ ! -f "$token_file" ]; then
+    return 1
+  fi
+
+  grep -Eq '^[[:space:]]*EXPO_TOKEN=' "$token_file"
+}
+
 TOKEN="${EXPO_TOKEN:-}"
 
 if [ -z "$TOKEN" ]; then
@@ -35,12 +45,14 @@ if [ -z "$TOKEN" ]; then
 fi
 
 if [ -z "$TOKEN" ]; then
-  TOKEN="$(read_token_from_file "$ROOT_DIR/.env" || true)"
-fi
-
-if [ -z "$TOKEN" ]; then
   printf '%s\n' "Missing EXPO_TOKEN for this project." >&2
-  printf '%s\n' "Add EXPO_TOKEN to .env.eas.local (recommended) or export it before running EAS commands." >&2
+  printf '%s\n' "Add EXPO_TOKEN to .env.eas.local or export it before running EAS commands." >&2
+
+  if file_has_token "$ROOT_DIR/.env"; then
+    printf '%s\n' "Note: .env contains EXPO_TOKEN but this wrapper ignores .env on purpose." >&2
+    printf '%s\n' "Move the token into .env.eas.local to keep EAS auth scoped to this project." >&2
+  fi
+
   exit 1
 fi
 
