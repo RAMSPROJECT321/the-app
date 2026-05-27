@@ -25,6 +25,11 @@ type ExpoSpeechRecognitionModuleType =
 
 let speechModule: ExpoSpeechRecognitionModuleType | null = null;
 let speechModuleLoadFailed = false;
+const androidSpeechServicePriority = [
+  "com.google.android.tts",
+  "com.google.android.googlequicksearchbox",
+  "com.google.android.as",
+] as const;
 
 const getSpeechModule = () => {
   if (speechModuleLoadFailed) {
@@ -46,7 +51,7 @@ const getSpeechModule = () => {
   }
 };
 
-const shouldUseOnDeviceRecognitionAsync = async (
+const supportsOnDeviceRecognitionAsync = async (
   module: ExpoSpeechRecognitionModuleType,
 ) => {
   if (Platform.OS === "ios") {
@@ -62,6 +67,71 @@ const shouldUseOnDeviceRecognitionAsync = async (
     });
     return false;
   }
+};
+
+const getInstalledLocalesForServiceAsync = async (
+  module: ExpoSpeechRecognitionModuleType,
+  androidRecognitionServicePackage?: string,
+) => {
+  try {
+    const supportedLocales = await module.getSupportedLocales(
+      androidRecognitionServicePackage
+        ? {
+            androidRecognitionServicePackage,
+          }
+        : {},
+    );
+
+    return supportedLocales.installedLocales;
+  } catch (error) {
+    debugLogger.warn("voice", "unable to inspect installed speech locales", {
+      androidRecognitionServicePackage,
+      error,
+    });
+    return [];
+  }
+};
+
+const resolveAndroidRecognitionServiceAsync = async (
+  module: ExpoSpeechRecognitionModuleType,
+) => {
+  const availableServices =
+    typeof module.getSpeechRecognitionServices === "function"
+      ? module.getSpeechRecognitionServices()
+      : [];
+  const defaultService =
+    typeof module.getDefaultRecognitionService === "function"
+      ? module.getDefaultRecognitionService()?.packageName
+      : undefined;
+  const orderedServices = Array.from(
+    new Set(
+      [defaultService, ...androidSpeechServicePriority].filter(
+        (service): service is string => Boolean(service),
+      ),
+    ),
+  ).filter((service) =>
+    availableServices.length ? availableServices.includes(service) : true,
+  );
+
+  for (const service of orderedServices) {
+    const installedLocales = await getInstalledLocalesForServiceAsync(module, service);
+
+    if (installedLocales.includes(APP_CONFIG.defaultLocale)) {
+      return {
+        availableServices,
+        defaultService,
+        requiresOnDeviceRecognition: true,
+        servicePackage: service,
+      };
+    }
+  }
+
+  return {
+    availableServices,
+    defaultService,
+    requiresOnDeviceRecognition: false,
+    servicePackage: defaultService ?? orderedServices[0],
+  };
 };
 
 class ExpoSpeechProvider implements SpeechProvider {
@@ -93,11 +163,39 @@ class ExpoSpeechProvider implements SpeechProvider {
       return;
     }
 
-    const requiresOnDeviceRecognition = await shouldUseOnDeviceRecognitionAsync(module);
+    if (Platform.OS === "ios") {
+      const requiresOnDeviceRecognition = await supportsOnDeviceRecognitionAsync(module);
+      debugLogger.log("voice", "starting speech recognition", {
+        locale: APP_CONFIG.defaultLocale,
+        platform: Platform.OS,
+        requiresOnDeviceRecognition,
+      });
+
+      module.start({
+        lang: APP_CONFIG.defaultLocale,
+        interimResults: true,
+        continuous: false,
+        requiresOnDeviceRecognition,
+        addsPunctuation: true,
+        maxAlternatives: 1,
+      });
+      return;
+    }
+
+    const {
+      availableServices,
+      defaultService,
+      requiresOnDeviceRecognition,
+      servicePackage,
+    } = await resolveAndroidRecognitionServiceAsync(module);
+
     debugLogger.log("voice", "starting speech recognition", {
       locale: APP_CONFIG.defaultLocale,
       platform: Platform.OS,
       requiresOnDeviceRecognition,
+      defaultService,
+      availableServices,
+      servicePackage,
     });
 
     module.start({
@@ -105,8 +203,9 @@ class ExpoSpeechProvider implements SpeechProvider {
       interimResults: true,
       continuous: false,
       requiresOnDeviceRecognition,
-      addsPunctuation: true,
+      addsPunctuation: requiresOnDeviceRecognition,
       maxAlternatives: 1,
+      androidRecognitionServicePackage: servicePackage,
     });
   }
 

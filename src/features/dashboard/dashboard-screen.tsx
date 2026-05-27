@@ -1,3 +1,6 @@
+import { useNavigation, type CompositeNavigationProp } from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   Archive,
   CheckCircle2,
@@ -22,10 +25,18 @@ import { APP_CONFIG, APP_LIMITS } from "@/constants/app";
 import { useSessionStore } from "@/store/session-store";
 import { useTasksStore } from "@/store/tasks-store";
 import { useVaultStore } from "@/store/vault-store";
+import type { AppTabParamList, HomeStackParamList } from "@/types/navigation";
 import { formatRelativeTime } from "@/utils/date";
 
+type DashboardNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<HomeStackParamList, "Home">,
+  BottomTabNavigationProp<AppTabParamList>
+>;
+
 export const DashboardScreen = () => {
+  const navigation = useNavigation<DashboardNavigationProp>();
   const userId = useSessionStore((state) => state.userId);
+  const vaultUnlocked = useSessionStore((state) => state.vaultUnlocked);
   const taskIds = useTasksStore((state) => state.taskIds);
   const tasksById = useTasksStore((state) => state.tasksById);
   const createTaskFromVoiceTranscript = useTasksStore(
@@ -142,6 +153,27 @@ export const DashboardScreen = () => {
     );
   };
 
+  const handleOpenTask = (taskId: string) => {
+    navigation.navigate("TasksTab", {
+      screen: "TaskDetail",
+      params: { taskId },
+    });
+  };
+
+  const handleOpenVault = (itemId?: string) => {
+    if (vaultUnlocked && itemId) {
+      navigation.navigate("VaultTab", {
+        screen: "VaultEditor",
+        params: { itemId },
+      });
+      return;
+    }
+
+    navigation.navigate("VaultTab", {
+      screen: "Vault",
+    });
+  };
+
   return (
     <Screen scrollable={false} contentClassName="gap-0 px-0 pb-0 pt-0">
       <ScrollView
@@ -171,7 +203,7 @@ export const DashboardScreen = () => {
               />
               <AppButton
                 label="Vault ready"
-                onPress={() => undefined}
+                onPress={() => handleOpenVault()}
                 variant="secondary"
                 icon={ShieldCheck}
                 className="flex-1"
@@ -208,19 +240,21 @@ export const DashboardScreen = () => {
         />
         <View className="gap-4">
           {filteredRecentTasks.map((task) => (
-            <Card key={task.id} className="gap-2 px-4 py-4">
-              <View className="flex-row items-center justify-between gap-3">
-                <AppText variant="subtitle" className="flex-1">
-                  {task.title}
+            <Pressable key={task.id} onPress={() => handleOpenTask(task.id)}>
+              <Card className="gap-2 px-4 py-4 active:opacity-95">
+                <View className="flex-row items-center justify-between gap-3">
+                  <AppText variant="subtitle" className="flex-1">
+                    {task.title}
+                  </AppText>
+                  <AppText variant="caption" tone="secondary">
+                    {formatRelativeTime(task.updatedAt)}
+                  </AppText>
+                </View>
+                <AppText tone="secondary" numberOfLines={2}>
+                  {task.description}
                 </AppText>
-                <AppText variant="caption" tone="secondary">
-                  {formatRelativeTime(task.updatedAt)}
-                </AppText>
-              </View>
-              <AppText tone="secondary" numberOfLines={2}>
-                {task.description}
-              </AppText>
-            </Card>
+              </Card>
+            </Pressable>
           ))}
         </View>
 
@@ -231,20 +265,22 @@ export const DashboardScreen = () => {
         />
         <View className="gap-4">
           {filteredRecentVaultItems.map((item) => (
-            <Card key={item.id} className="gap-3 px-4 py-4">
-              <View className="flex-row items-center justify-between gap-4">
-                <View className="flex-1 gap-1">
-                  <AppText variant="subtitle">{item.title}</AppText>
-                  <AppText variant="caption" tone="secondary">
-                    {item.category.replace("_", " ")}
-                  </AppText>
+            <Pressable key={item.id} onPress={() => handleOpenVault(item.id)}>
+              <Card className="gap-3 px-4 py-4 active:opacity-95">
+                <View className="flex-row items-center justify-between gap-4">
+                  <View className="flex-1 gap-1">
+                    <AppText variant="subtitle">{item.title}</AppText>
+                    <AppText variant="caption" tone="secondary">
+                      {item.category.replace("_", " ")}
+                    </AppText>
+                  </View>
+                  <Archive color="#0F766E" size={18} strokeWidth={2.2} />
                 </View>
-                <Archive color="#0F766E" size={18} strokeWidth={2.2} />
-              </View>
-              <AppText tone="secondary" numberOfLines={2}>
-                {item.notes ?? "Local secure storage entry"}
-              </AppText>
-            </Card>
+                <AppText tone="secondary" numberOfLines={2}>
+                  {item.notes ?? "Local secure storage entry"}
+                </AppText>
+              </Card>
+            </Pressable>
           ))}
         </View>
       </ScrollView>

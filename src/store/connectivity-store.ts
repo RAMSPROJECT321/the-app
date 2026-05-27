@@ -6,6 +6,6 @@ interface ConnectivityState {
 }
 
 export const useConnectivityStore = create<ConnectivityState>((set) => ({
-  isConnected: true,
+  isConnected: false,
   setConnected: (isConnected) => set({ isConnected }),
 }));

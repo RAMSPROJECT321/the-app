@@ -1,6 +1,6 @@
 import { Clock3, Trash2 } from "lucide-react-native";
-import { memo } from "react";
-import { Pressable, View } from "react-native";
+import { memo, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 
 import { AppText } from "@/components/app-text";
@@ -13,8 +13,8 @@ import { formatRelativeTime } from "@/utils/date";
 interface TaskCardProps {
   task: Task;
   onPress: () => void;
-  onComplete: () => void;
-  onDelete: () => void;
+  onComplete: () => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
 }
 
 const priorityToneMap = {
@@ -26,26 +26,60 @@ const priorityToneMap = {
 export const TaskCard = memo(
   ({ task, onPress, onComplete, onDelete }: TaskCardProps) => {
     const { palette } = useAppTheme();
+    const swipeableRef = useRef<Swipeable>(null);
+    const [activeAction, setActiveAction] = useState<"complete" | "delete" | null>(null);
     const completedChecklist = task.checklist.filter((item) => item.completed).length;
+    const showCompleteAction = task.status !== "completed";
+
+    const handleSwipeAction = async (
+      action: "complete" | "delete",
+      callback: TaskCardProps["onComplete"] | TaskCardProps["onDelete"],
+    ) => {
+      if (activeAction) {
+        return;
+      }
+
+      setActiveAction(action);
+
+      try {
+        await callback();
+      } finally {
+        swipeableRef.current?.close();
+        setActiveAction(null);
+      }
+    };
 
     return (
       <Swipeable
+        ref={swipeableRef}
         overshootRight={false}
         renderRightActions={() => (
           <View className="flex-row items-stretch gap-3 pl-3">
-            <Pressable
-              className="w-20 items-center justify-center rounded-3xl bg-success"
-              onPress={onComplete}
-            >
-              <AppText variant="caption" tone="inverse">
-                Done
-              </AppText>
-            </Pressable>
+            {showCompleteAction ? (
+              <Pressable
+                className="w-20 items-center justify-center rounded-3xl bg-success"
+                disabled={Boolean(activeAction)}
+                onPress={() => void handleSwipeAction("complete", onComplete)}
+              >
+                {activeAction === "complete" ? (
+                  <ActivityIndicator color={palette.textInverse} />
+                ) : (
+                  <AppText variant="caption" tone="inverse">
+                    Done
+                  </AppText>
+                )}
+              </Pressable>
+            ) : null}
             <Pressable
               className="w-20 items-center justify-center rounded-3xl bg-danger"
-              onPress={onDelete}
+              disabled={Boolean(activeAction)}
+              onPress={() => void handleSwipeAction("delete", onDelete)}
             >
-              <Trash2 color={palette.textInverse} size={18} strokeWidth={2.2} />
+              {activeAction === "delete" ? (
+                <ActivityIndicator color={palette.textInverse} />
+              ) : (
+                <Trash2 color={palette.textInverse} size={18} strokeWidth={2.2} />
+              )}
             </Pressable>
           </View>
         )}

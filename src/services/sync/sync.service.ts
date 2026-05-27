@@ -97,7 +97,11 @@ export const syncService = {
     tasksUnsubscribe = tasksRepository.subscribe(
       userId,
       (tasks, meta) => {
-        useTasksStore.getState().replaceAllFromRemote(tasks);
+        useTasksStore.getState().replaceAllFromRemote(tasks, {
+          userId,
+          preserveLocalSynced:
+            meta.fromCache && !useConnectivityStore.getState().isConnected,
+        });
         updateStatusFromSnapshot(meta);
       },
       (error) => {
@@ -108,7 +112,11 @@ export const syncService = {
     vaultUnsubscribe = vaultRepository.subscribe(
       userId,
       (items, meta) => {
-        useVaultStore.getState().replaceAllFromRemote(items);
+        useVaultStore.getState().replaceAllFromRemote(items, {
+          userId,
+          preserveLocalSynced:
+            meta.fromCache && !useConnectivityStore.getState().isConnected,
+        });
         updateStatusFromSnapshot(meta);
       },
       (error) => {
@@ -170,16 +178,31 @@ export const syncService = {
 
     useSyncStore.getState().setStatus("syncing");
     useSyncStore.getState().clearError();
-    debugLogger.log("sync", "waiting for remote writes", { userId });
+    debugLogger.log("sync", "retrying unsynced local changes", { userId });
 
     try {
+      const [taskRetryResult, vaultRetryResult] = await Promise.all([
+        useTasksStore.getState().retryUnsyncedTasksAsync(userId),
+        useVaultStore.getState().retryUnsyncedVaultItemsAsync(userId),
+      ]);
+
+      debugLogger.log("sync", "waiting for remote writes", {
+        userId,
+        taskRetryResult,
+        vaultRetryResult,
+      });
+
       await waitForRemoteWritesAsync();
       useSyncStore.getState().setStatus("idle");
       useSyncStore.getState().setLastSyncedAt(new Date().toISOString());
       debugLogger.log("sync", "manual sync completed", { userId });
 
       return {
-        syncedCount: 0,
+        syncedCount:
+          taskRetryResult.upserts +
+          taskRetryResult.deletes +
+          vaultRetryResult.upserts +
+          vaultRetryResult.deletes,
         pulled: true,
         message: "Firebase sync is up to date. Task attachments remain on this device only.",
       };

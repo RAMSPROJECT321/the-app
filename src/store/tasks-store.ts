@@ -20,8 +20,21 @@ interface TasksState {
   hydrated: boolean;
   tasksById: Record<string, Task>;
   taskIds: string[];
+  pendingDeletesById: Record<string, Task>;
   setHydrated: (hydrated: boolean) => void;
-  replaceAllFromRemote: (tasks: Task[]) => void;
+  replaceAllFromRemote: (
+    tasks: Task[],
+    options?: {
+      preserveLocalSynced?: boolean;
+      userId?: string;
+    },
+  ) => void;
+  retryUnsyncedTasksAsync: (
+    userId: string,
+  ) => Promise<{
+    upserts: number;
+    deletes: number;
+  }>;
   clearAll: () => void;
   createTask: (input: CreateTaskInput) => string;
   createTaskFromVoiceTranscript: (transcript: string) => string;
@@ -36,8 +49,8 @@ interface TasksState {
   addAttachment: (taskId: string, attachment: TaskAttachment) => void;
   appendVoiceTranscript: (taskId: string, transcript: string) => void;
   pruneMissingAttachmentsAsync: () => Promise<void>;
-  deleteTask: (taskId: string) => void;
-  markCompleted: (taskId: string) => void;
+  deleteTask: (taskId: string) => Promise<void>;
+  markCompleted: (taskId: string) => Promise<void>;
 }
 
 const sortTaskIds = (tasks: Task[]) =>
@@ -45,6 +58,18 @@ const sortTaskIds = (tasks: Task[]) =>
     .slice()
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .map((task) => task.id);
+
+const sortTasks = (tasksById: Record<string, Task>) =>
+  Object.values(tasksById).sort((left, right) =>
+    right.updatedAt.localeCompare(left.updatedAt),
+  );
+
+const isUnsyncedTask = (task: Task) => task.syncState !== "synced";
+
+const shouldPreferLocalTask = (localTask: Task, remoteTask: Task) =>
+  isUnsyncedTask(localTask) &&
+  (localTask.version > remoteTask.version ||
+    localTask.updatedAt > remoteTask.updatedAt);
 
 const upsertTaskState = (
   state: Pick<TasksState, "tasksById" | "taskIds">,
@@ -66,6 +91,19 @@ const upsertTaskState = (
       [nextTask.id]: nextTask,
     },
     taskIds,
+  };
+};
+
+const removeTaskFromState = (
+  state: Pick<TasksState, "tasksById" | "taskIds">,
+  taskId: string,
+) => {
+  const nextTasks = { ...state.tasksById };
+  delete nextTasks[taskId];
+
+  return {
+    tasksById: nextTasks,
+    taskIds: state.taskIds.filter((id) => id !== taskId),
   };
 };
 
@@ -124,48 +162,187 @@ const withTimelineUpdate = (
 export const useTasksStore = create<TasksState>()(
   persist(
     (set, get) => {
-      const persistTask = (nextTask: Task) => {
-        void tasksRepository.upsertTaskAsync(nextTask).catch(() => {
+      const persistTaskAsync = async (nextTask: Task) => {
+        try {
+          await tasksRepository.upsertTaskAsync(nextTask);
+        } catch {
           set((state) => ({
             ...upsertTaskState(state, {
               ...nextTask,
               syncState: "failed",
             }),
           }));
-        });
+        }
       };
 
       return {
         hydrated: false,
         tasksById: {},
         taskIds: [],
+        pendingDeletesById: {},
         setHydrated: (hydrated) => set({ hydrated }),
-        replaceAllFromRemote: (tasks) =>
+        replaceAllFromRemote: (tasks, options) =>
           set((state) => {
-            const mergedTasks = tasks.map((task) => {
-              const existing = state.tasksById[task.id];
+            const targetUserId =
+              options?.userId ??
+              tasks[0]?.userId ??
+              useSessionStore.getState().userId;
 
-              if (!existing) {
-                return task;
+            if (!targetUserId) {
+              return state;
+            }
+
+            const otherUsersTasks = Object.fromEntries(
+              Object.entries(state.tasksById).filter(
+                ([, task]) => task.userId !== targetUserId,
+              ),
+            );
+            const currentUserTasks = Object.fromEntries(
+              Object.entries(state.tasksById).filter(
+                ([, task]) => task.userId === targetUserId,
+              ),
+            );
+            const otherUsersPendingDeletes = Object.fromEntries(
+              Object.entries(state.pendingDeletesById).filter(
+                ([, task]) => task.userId !== targetUserId,
+              ),
+            );
+            const currentUserPendingDeletes = Object.fromEntries(
+              Object.entries(state.pendingDeletesById).filter(
+                ([, task]) => task.userId === targetUserId,
+              ),
+            );
+            const nextUserTasksById: Record<string, Task> = {};
+
+            for (const remoteTask of tasks) {
+              if (currentUserPendingDeletes[remoteTask.id]) {
+                continue;
               }
 
-              return {
-                ...task,
-                attachments: mergeAttachments(existing.attachments, task.attachments),
+              const existing = currentUserTasks[remoteTask.id];
+
+              if (!existing) {
+                nextUserTasksById[remoteTask.id] = remoteTask;
+                continue;
+              }
+
+              if (shouldPreferLocalTask(existing, remoteTask)) {
+                nextUserTasksById[remoteTask.id] = {
+                  ...existing,
+                  attachments: mergeAttachments(
+                    existing.attachments,
+                    remoteTask.attachments,
+                  ),
+                };
+                continue;
+              }
+
+              nextUserTasksById[remoteTask.id] = {
+                ...remoteTask,
+                attachments: mergeAttachments(
+                  existing.attachments,
+                  remoteTask.attachments,
+                ),
               };
-            });
+            }
+
+            for (const localTask of Object.values(currentUserTasks)) {
+              if (
+                nextUserTasksById[localTask.id] ||
+                currentUserPendingDeletes[localTask.id]
+              ) {
+                continue;
+              }
+
+              if (options?.preserveLocalSynced || isUnsyncedTask(localTask)) {
+                nextUserTasksById[localTask.id] = localTask;
+              }
+            }
+
+            const tasksById = {
+              ...otherUsersTasks,
+              ...nextUserTasksById,
+            };
 
             return {
-              tasksById: Object.fromEntries(
-                mergedTasks.map((task) => [task.id, task]),
-              ),
-              taskIds: sortTaskIds(mergedTasks),
+              tasksById,
+              taskIds: sortTaskIds(sortTasks(tasksById)),
+              pendingDeletesById: {
+                ...otherUsersPendingDeletes,
+                ...currentUserPendingDeletes,
+              },
             };
           }),
+        retryUnsyncedTasksAsync: async (userId) => {
+          const { tasksById, pendingDeletesById } = get();
+          const unsyncedTasks = Object.values(tasksById).filter(
+            (task) => task.userId === userId && task.syncState !== "synced",
+          );
+          const pendingDeletes = Object.values(pendingDeletesById).filter(
+            (task) => task.userId === userId,
+          );
+
+          await Promise.all(
+            unsyncedTasks.map(async (task) => {
+              const nextTask = {
+                ...task,
+                syncState: "pending" as const,
+              };
+
+              set((state) => ({
+                ...upsertTaskState(state, nextTask),
+              }));
+
+              await persistTaskAsync(nextTask);
+            }),
+          );
+
+          await Promise.all(
+            pendingDeletes.map(async (task) => {
+              set((state) => ({
+                pendingDeletesById: {
+                  ...state.pendingDeletesById,
+                  [task.id]: {
+                    ...task,
+                    syncState: "pending",
+                  },
+                },
+              }));
+
+              try {
+                await tasksRepository.deleteTaskAsync(task.userId, task.id);
+                set((state) => {
+                  const nextPendingDeletes = { ...state.pendingDeletesById };
+                  delete nextPendingDeletes[task.id];
+
+                  return {
+                    pendingDeletesById: nextPendingDeletes,
+                  };
+                });
+              } catch {
+                set((state) => ({
+                  pendingDeletesById: {
+                    ...state.pendingDeletesById,
+                    [task.id]: {
+                      ...task,
+                      syncState: "failed",
+                    },
+                  },
+                }));
+              }
+            }),
+          );
+
+          return {
+            upserts: unsyncedTasks.length,
+            deletes: pendingDeletes.length,
+          };
+        },
         clearAll: () =>
           set({
             tasksById: {},
             taskIds: [],
+            pendingDeletesById: {},
           }),
         createTask: (input) => {
           const userId = useSessionStore.getState().userId;
@@ -203,7 +380,7 @@ export const useTasksStore = create<TasksState>()(
           set((state) => ({
             ...upsertTaskState(state, nextTask, { prepend: true }),
           }));
-          persistTask(nextTask);
+          void persistTaskAsync(nextTask);
           return taskId;
         },
         createTaskFromVoiceTranscript: (transcript) => {
@@ -235,7 +412,7 @@ export const useTasksStore = create<TasksState>()(
           set((state) => ({
             ...upsertTaskState(state, nextTask),
           }));
-          persistTask(nextTask);
+          void persistTaskAsync(nextTask);
         },
         toggleChecklistItem: (taskId, itemId) => {
           const task = get().tasksById[taskId];
@@ -263,7 +440,7 @@ export const useTasksStore = create<TasksState>()(
           set((state) => ({
             ...upsertTaskState(state, nextTask),
           }));
-          persistTask(nextTask);
+          void persistTaskAsync(nextTask);
         },
         addChecklistItem: (taskId, label) => {
           const task = get().tasksById[taskId];
@@ -291,7 +468,7 @@ export const useTasksStore = create<TasksState>()(
           set((state) => ({
             ...upsertTaskState(state, nextTask),
           }));
-          persistTask(nextTask);
+          void persistTaskAsync(nextTask);
         },
         addAttachment: (taskId, attachment) => {
           const task = get().tasksById[taskId];
@@ -312,7 +489,7 @@ export const useTasksStore = create<TasksState>()(
           set((state) => ({
             ...upsertTaskState(state, nextTask),
           }));
-          persistTask(nextTask);
+          void persistTaskAsync(nextTask);
         },
         appendVoiceTranscript: (taskId, transcript) => {
           const task = get().tasksById[taskId];
@@ -338,7 +515,7 @@ export const useTasksStore = create<TasksState>()(
           set((state) => ({
             ...upsertTaskState(state, nextTask),
           }));
-          persistTask(nextTask);
+          void persistTaskAsync(nextTask);
         },
         pruneMissingAttachmentsAsync: async () => {
           const updates = await Promise.all(
@@ -411,7 +588,7 @@ export const useTasksStore = create<TasksState>()(
             };
           });
         },
-        deleteTask: (taskId) => {
+        deleteTask: async (taskId) => {
           const task = get().tasksById[taskId];
 
           if (!task) {
@@ -419,25 +596,41 @@ export const useTasksStore = create<TasksState>()(
           }
 
           set((state) => {
-            const nextTasks = { ...state.tasksById };
-            delete nextTasks[taskId];
-
             return {
-              tasksById: nextTasks,
-              taskIds: state.taskIds.filter((id) => id !== taskId),
+              ...removeTaskFromState(state, taskId),
+              pendingDeletesById: {
+                ...state.pendingDeletesById,
+                [taskId]: {
+                  ...task,
+                  syncState: "pending",
+                },
+              },
             };
           });
 
-          void tasksRepository.deleteTaskAsync(task.userId, taskId).catch(() => {
+          try {
+            await tasksRepository.deleteTaskAsync(task.userId, taskId);
+            set((state) => {
+              const nextPendingDeletes = { ...state.pendingDeletesById };
+              delete nextPendingDeletes[taskId];
+
+              return {
+                pendingDeletesById: nextPendingDeletes,
+              };
+            });
+          } catch {
             set((state) => ({
-              ...upsertTaskState(state, {
-                ...task,
-                syncState: "failed",
-              }),
+              pendingDeletesById: {
+                ...state.pendingDeletesById,
+                [taskId]: {
+                  ...task,
+                  syncState: "failed",
+                },
+              },
             }));
-          });
+          }
         },
-        markCompleted: (taskId) => {
+        markCompleted: async (taskId) => {
           const task = get().tasksById[taskId];
 
           if (!task || task.status === "completed") {
@@ -456,7 +649,7 @@ export const useTasksStore = create<TasksState>()(
           set((state) => ({
             ...upsertTaskState(state, nextTask),
           }));
-          persistTask(nextTask);
+          await persistTaskAsync(nextTask);
         },
       };
     },
@@ -469,6 +662,7 @@ export const useTasksStore = create<TasksState>()(
       partialize: (state) => ({
         tasksById: state.tasksById,
         taskIds: state.taskIds,
+        pendingDeletesById: state.pendingDeletesById,
       }),
     },
   ),

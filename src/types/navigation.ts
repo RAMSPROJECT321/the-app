@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from "@react-navigation/native";
+
 export type HomeStackParamList = {
   Home: undefined;
 };
@@ -27,13 +29,13 @@ export type SettingsStackParamList = {
 };
 
 export type AppTabParamList = {
-  HomeTab: undefined;
-  TasksTab: undefined;
-  VaultTab: undefined;
-  SettingsTab: undefined;
+  HomeTab: NavigatorScreenParams<HomeStackParamList>;
+  TasksTab: NavigatorScreenParams<TasksStackParamList>;
+  VaultTab: NavigatorScreenParams<VaultStackParamList>;
+  SettingsTab: NavigatorScreenParams<SettingsStackParamList>;
 };
 
 export type RootStackParamList = {
-  Auth: undefined;
-  AppTabs: undefined;
+  Auth: NavigatorScreenParams<AuthStackParamList>;
+  AppTabs: NavigatorScreenParams<AppTabParamList>;
 };

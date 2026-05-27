@@ -40,7 +40,9 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone for voice-to-text capture.",
           "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to transcribe speech into editable notes.",
           "androidSpeechServicePackages": [
-            "com.google.android.googlequicksearchbox"
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.tts",
+            "com.google.android.as"
           ]
         }
       ]

@@ -24,8 +24,21 @@ interface VaultState {
   hydrated: boolean;
   itemsById: Record<string, VaultItem>;
   itemIds: string[];
+  pendingDeletesById: Record<string, VaultItem>;
   setHydrated: (hydrated: boolean) => void;
-  replaceAllFromRemote: (items: VaultItem[]) => void;
+  replaceAllFromRemote: (
+    items: VaultItem[],
+    options?: {
+      preserveLocalSynced?: boolean;
+      userId?: string;
+    },
+  ) => void;
+  retryUnsyncedVaultItemsAsync: (
+    userId: string,
+  ) => Promise<{
+    upserts: number;
+    deletes: number;
+  }>;
   clearAll: () => void;
   saveVaultItemAsync: (input: SaveVaultInput, itemId?: string) => Promise<string>;
   deleteVaultItemAsync: (itemId: string) => Promise<void>;
@@ -47,25 +60,185 @@ const upsertVaultState = (
   };
 };
 
+const sortVaultItems = (itemsById: Record<string, VaultItem>) =>
+  Object.values(itemsById).sort((left, right) =>
+    right.updatedAt.localeCompare(left.updatedAt),
+  );
+
+const isUnsyncedVaultItem = (item: VaultItem) => item.syncState !== "synced";
+
+const shouldPreferLocalVaultItem = (localItem: VaultItem, remoteItem: VaultItem) =>
+  isUnsyncedVaultItem(localItem) &&
+  (localItem.version > remoteItem.version ||
+    localItem.updatedAt > remoteItem.updatedAt);
+
 export const useVaultStore = create<VaultState>()(
   persist(
     (set, get) => ({
       hydrated: false,
       itemsById: {},
       itemIds: [],
+      pendingDeletesById: {},
       setHydrated: (hydrated) => set({ hydrated }),
-      replaceAllFromRemote: (items) =>
-        set({
-          itemsById: Object.fromEntries(items.map((item) => [item.id, item])),
-          itemIds: items
-            .slice()
-            .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-            .map((item) => item.id),
+      replaceAllFromRemote: (items, options) =>
+        set((state) => {
+          const targetUserId =
+            options?.userId ??
+            items[0]?.userId ??
+            useSessionStore.getState().userId;
+
+          if (!targetUserId) {
+            return state;
+          }
+
+          const otherUsersItems = Object.fromEntries(
+            Object.entries(state.itemsById).filter(
+              ([, item]) => item.userId !== targetUserId,
+            ),
+          );
+          const currentUserItems = Object.fromEntries(
+            Object.entries(state.itemsById).filter(
+              ([, item]) => item.userId === targetUserId,
+            ),
+          );
+          const otherUsersPendingDeletes = Object.fromEntries(
+            Object.entries(state.pendingDeletesById).filter(
+              ([, item]) => item.userId !== targetUserId,
+            ),
+          );
+          const currentUserPendingDeletes = Object.fromEntries(
+            Object.entries(state.pendingDeletesById).filter(
+              ([, item]) => item.userId === targetUserId,
+            ),
+          );
+          const nextUserItemsById: Record<string, VaultItem> = {};
+
+          for (const remoteItem of items) {
+            if (currentUserPendingDeletes[remoteItem.id]) {
+              continue;
+            }
+
+            const existing = currentUserItems[remoteItem.id];
+
+            if (existing && shouldPreferLocalVaultItem(existing, remoteItem)) {
+              nextUserItemsById[remoteItem.id] = existing;
+              continue;
+            }
+
+            nextUserItemsById[remoteItem.id] = existing
+              ? {
+                  ...remoteItem,
+                  secretRef: existing.secretRef,
+                }
+              : remoteItem;
+          }
+
+          for (const localItem of Object.values(currentUserItems)) {
+            if (
+              nextUserItemsById[localItem.id] ||
+              currentUserPendingDeletes[localItem.id]
+            ) {
+              continue;
+            }
+
+            if (options?.preserveLocalSynced || isUnsyncedVaultItem(localItem)) {
+              nextUserItemsById[localItem.id] = localItem;
+            }
+          }
+
+          const itemsById = {
+            ...otherUsersItems,
+            ...nextUserItemsById,
+          };
+
+          return {
+            itemsById,
+            itemIds: sortVaultItems(itemsById).map((item) => item.id),
+            pendingDeletesById: {
+              ...otherUsersPendingDeletes,
+              ...currentUserPendingDeletes,
+            },
+          };
         }),
+      retryUnsyncedVaultItemsAsync: async (userId) => {
+        const { itemsById, pendingDeletesById } = get();
+        const unsyncedItems = Object.values(itemsById).filter(
+          (item) => item.userId === userId && item.syncState !== "synced",
+        );
+        const pendingDeletes = Object.values(pendingDeletesById).filter(
+          (item) => item.userId === userId,
+        );
+
+        await Promise.all(
+          unsyncedItems.map(async (item) => {
+            const nextItem = {
+              ...item,
+              syncState: "pending" as const,
+            };
+
+            set((state) => ({
+              ...upsertVaultState(state, nextItem),
+            }));
+
+            try {
+              await vaultRepository.upsertVaultItemAsync(nextItem);
+            } catch {
+              set((state) => ({
+                ...upsertVaultState(state, {
+                  ...nextItem,
+                  syncState: "failed",
+                }),
+              }));
+            }
+          }),
+        );
+
+        await Promise.all(
+          pendingDeletes.map(async (item) => {
+            set((state) => ({
+              pendingDeletesById: {
+                ...state.pendingDeletesById,
+                [item.id]: {
+                  ...item,
+                  syncState: "pending",
+                },
+              },
+            }));
+
+            try {
+              await vaultRepository.deleteVaultItemAsync(item.userId, item.id);
+              set((state) => {
+                const nextPendingDeletes = { ...state.pendingDeletesById };
+                delete nextPendingDeletes[item.id];
+
+                return {
+                  pendingDeletesById: nextPendingDeletes,
+                };
+              });
+            } catch {
+              set((state) => ({
+                pendingDeletesById: {
+                  ...state.pendingDeletesById,
+                  [item.id]: {
+                    ...item,
+                    syncState: "failed",
+                  },
+                },
+              }));
+            }
+          }),
+        );
+
+        return {
+          upserts: unsyncedItems.length,
+          deletes: pendingDeletes.length,
+        };
+      },
       clearAll: () =>
         set({
           itemsById: {},
           itemIds: [],
+          pendingDeletesById: {},
         }),
       saveVaultItemAsync: async (input, itemId) => {
         const userId = useSessionStore.getState().userId;
@@ -131,17 +304,35 @@ export const useVaultStore = create<VaultState>()(
           return {
             itemsById: nextItems,
             itemIds: state.itemIds.filter((id) => id !== itemId),
+            pendingDeletesById: {
+              ...state.pendingDeletesById,
+              [itemId]: {
+                ...item,
+                syncState: "pending",
+              },
+            },
           };
         });
 
         try {
           await vaultRepository.deleteVaultItemAsync(item.userId, itemId);
+          set((state) => {
+            const nextPendingDeletes = { ...state.pendingDeletesById };
+            delete nextPendingDeletes[itemId];
+
+            return {
+              pendingDeletesById: nextPendingDeletes,
+            };
+          });
         } catch {
           set((state) => ({
-            ...upsertVaultState(state, {
-              ...item,
-              syncState: "failed",
-            }),
+            pendingDeletesById: {
+              ...state.pendingDeletesById,
+              [itemId]: {
+                ...item,
+                syncState: "failed",
+              },
+            },
           }));
         }
       },
@@ -182,6 +373,7 @@ export const useVaultStore = create<VaultState>()(
       partialize: (state) => ({
         itemsById: state.itemsById,
         itemIds: state.itemIds,
+        pendingDeletesById: state.pendingDeletesById,
       }),
     },
   ),

@@ -107,8 +107,12 @@ export const TasksScreen = ({ navigation }: Props) => {
       <TaskListItem
         task={item}
         onPress={() => navigation.navigate("TaskDetail", { taskId: item.id })}
-        onComplete={() => markCompleted(item.id)}
-        onDelete={() => deleteTask(item.id)}
+        onComplete={async () => {
+          await markCompleted(item.id);
+        }}
+        onDelete={async () => {
+          await deleteTask(item.id);
+        }}
       />
     ),
     [deleteTask, markCompleted, navigation],
