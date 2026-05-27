@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { AppState, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useEffect } from "react";
 
 import { AppLoadingScreen } from "@/components/app-loading-screen";
@@ -117,24 +118,26 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <View style={themeVars} className="flex-1 bg-background">
-        <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
-        {showStartupLoader ? (
-          <AppLoadingScreen
-            title={startupLoaderTitle}
-            description={startupLoaderDescription}
-            variant={startupLoaderVariant}
-          />
-        ) : (
-          <>
-            <AppNavigator />
-            <SyncStatusOverlay
-              status={syncStatus}
-              message={syncStatus === "error" ? syncErrorMessage : undefined}
+      <SafeAreaProvider>
+        <View style={themeVars} className="flex-1 bg-background">
+          <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
+          {showStartupLoader ? (
+            <AppLoadingScreen
+              title={startupLoaderTitle}
+              description={startupLoaderDescription}
+              variant={startupLoaderVariant}
             />
-          </>
-        )}
-      </View>
+          ) : (
+            <>
+              <AppNavigator />
+              <SyncStatusOverlay
+                status={syncStatus}
+                message={syncStatus === "error" ? syncErrorMessage : undefined}
+              />
+            </>
+          )}
+        </View>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
