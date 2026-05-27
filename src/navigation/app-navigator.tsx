@@ -117,6 +117,14 @@ const TabNavigator = () => {
       <Tab.Screen
         name="TasksTab"
         component={TasksStackNavigator}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            event.preventDefault();
+            navigation.navigate("TasksTab", {
+              screen: "Tasks",
+            });
+          },
+        })}
         options={{
           title: "Tasks",
           tabBarIcon: ({ color, size }) => (
@@ -127,6 +135,14 @@ const TabNavigator = () => {
       <Tab.Screen
         name="VaultTab"
         component={VaultStackNavigator}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            event.preventDefault();
+            navigation.navigate("VaultTab", {
+              screen: "Vault",
+            });
+          },
+        })}
         options={{
           title: "Vault",
           tabBarIcon: ({ color, size }) => (

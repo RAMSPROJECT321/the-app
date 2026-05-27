@@ -1,18 +1,21 @@
-import { Plus, Sparkles } from "lucide-react-native";
+import { Plus, SlidersHorizontal, Sparkles } from "lucide-react-native";
 import { memo, useCallback, useDeferredValue, useMemo, useState } from "react";
-import { FlatList, View } from "react-native";
+import { FlatList, Pressable, ScrollView, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { AppButton } from "@/components/app-button";
 import { AppText } from "@/components/app-text";
+import { Card } from "@/components/card";
 import { Chip } from "@/components/chip";
 import { EmptyState } from "@/components/empty-state";
 import { ListItemSeparator } from "@/components/list-item-separator";
 import { Screen } from "@/components/screen";
 import { SearchInput } from "@/components/search-input";
 import { SectionHeader } from "@/components/section-header";
+import { TextField } from "@/components/text-field";
 import { TaskCard } from "@/features/tasks/components/task-card";
 import { VoiceCaptureSheet } from "@/features/voice/components/voice-capture-sheet";
+import { useAppTheme } from "@/hooks/use-app-theme";
 import { useSessionStore } from "@/store/session-store";
 import { useTasksStore } from "@/store/tasks-store";
 import type { Task, TaskPriority, TaskStatus } from "@/types/entities";
@@ -36,6 +39,7 @@ const priorityFilters: Array<"all" | TaskPriority> = [
 const TaskListItem = memo(TaskCard);
 
 export const TasksScreen = ({ navigation }: Props) => {
+  const { palette } = useAppTheme();
   const userId = useSessionStore((state) => state.userId);
   const taskIds = useTasksStore((state) => state.taskIds);
   const tasksById = useTasksStore((state) => state.tasksById);
@@ -51,6 +55,10 @@ export const TasksScreen = ({ navigation }: Props) => {
   const [priorityFilter, setPriorityFilter] = useState<"all" | TaskPriority>("all");
   const [voiceOpen, setVoiceOpen] = useState(false);
   const deferredSearchQuery = useDeferredValue(searchQuery);
+  const hasActiveFilters =
+    Boolean(searchQuery.trim()) ||
+    statusFilter !== "all" ||
+    priorityFilter !== "all";
 
   const tasks = useMemo(
     () =>
@@ -102,6 +110,12 @@ export const TasksScreen = ({ navigation }: Props) => {
     navigation.navigate("TaskDetail", { taskId });
   };
 
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setPriorityFilter("all");
+  };
+
   const renderTaskItem = useCallback(
     ({ item }: { item: Task }) => (
       <TaskListItem
@@ -120,84 +134,6 @@ export const TasksScreen = ({ navigation }: Props) => {
 
   return (
     <Screen scrollable={false} contentClassName="gap-0 px-0 pb-0 pt-0">
-      <View className="gap-5 px-5 pb-4 pt-2">
-        <SectionHeader
-          eyebrow="Ideas and execution"
-          title="Task tracker"
-          description="Capture quickly, filter hard, and keep the list moving."
-        />
-
-        <View className="gap-4 rounded-[28px] border border-border bg-surface px-4 py-4">
-          <SearchInput
-            placeholder="Search titles, notes, and tags"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          <View className="flex-row gap-3">
-            <View className="flex-1 rounded-3xl border border-border bg-surface-elevated px-4 py-3">
-              <AppText variant="caption" tone="secondary">
-                Quick add
-              </AppText>
-              <View className="mt-2 flex-row items-center justify-between gap-3">
-                <View className="flex-1">
-                  <SearchInput
-                    placeholder="Write the task title"
-                    value={quickTitle}
-                    onChangeText={setQuickTitle}
-                    className="min-h-11 border-0 bg-transparent px-0"
-                  />
-                </View>
-                <AppButton
-                  label="Add"
-                  onPress={handleQuickAdd}
-                  icon={Plus}
-                  className="min-h-11 px-4"
-                />
-              </View>
-            </View>
-            <AppButton
-              label="Voice"
-              onPress={() => setVoiceOpen(true)}
-              icon={Sparkles}
-              variant="secondary"
-              className="self-end"
-            />
-          </View>
-        </View>
-
-        <View className="gap-3">
-          <AppText variant="caption" tone="secondary">
-            Status
-          </AppText>
-          <View className="flex-row flex-wrap gap-2">
-            {statusFilters.map((filter) => (
-              <Chip
-                key={filter}
-                label={filter.replace("_", " ")}
-                selected={statusFilter === filter}
-                onPress={() => setStatusFilter(filter)}
-              />
-            ))}
-          </View>
-        </View>
-
-        <View className="gap-3">
-          <AppText variant="caption" tone="secondary">
-            Priority
-          </AppText>
-          <View className="flex-row flex-wrap gap-2">
-            {priorityFilters.map((filter) => (
-              <Chip
-                key={filter}
-                label={filter}
-                selected={priorityFilter === filter}
-                onPress={() => setPriorityFilter(filter)}
-              />
-            ))}
-          </View>
-        </View>
-      </View>
-
       <FlatList
         data={filteredTasks}
         renderItem={renderTaskItem}
@@ -208,17 +144,116 @@ export const TasksScreen = ({ navigation }: Props) => {
         initialNumToRender={6}
         windowSize={7}
         removeClippedSubviews
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View className="gap-5 pb-6 pt-2">
+            <SectionHeader
+              eyebrow="Ideas and execution"
+              title="Task tracker"
+              description="Capture quickly, filter hard, and keep the list moving."
+            />
+
+            <SearchInput
+              placeholder="Search titles, notes, and tags"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+
+            <Card className="gap-4 overflow-hidden px-4 py-4">
+              <View className="absolute -right-10 -top-12 h-28 w-28 rounded-full bg-accent/10" />
+              <View className="gap-1">
+                <AppText variant="subtitle">Quick capture</AppText>
+                <AppText variant="caption" tone="secondary">
+                  Start with a title, or speak and turn it straight into a task.
+                </AppText>
+              </View>
+              <TextField
+                label="Task title"
+                value={quickTitle}
+                onChangeText={setQuickTitle}
+                placeholder="Write the next thing you need to ship"
+              />
+              <View className="flex-row gap-3">
+                <AppButton
+                  label="Add task"
+                  onPress={handleQuickAdd}
+                  icon={Plus}
+                  className="flex-1"
+                />
+                <AppButton
+                  label="Voice"
+                  onPress={() => setVoiceOpen(true)}
+                  icon={Sparkles}
+                  variant="secondary"
+                  className="flex-1"
+                />
+              </View>
+            </Card>
+
+            <Card className="gap-4 px-4 py-4">
+              <View className="flex-row items-center justify-between gap-3">
+                <View className="flex-row items-center gap-2">
+                  <SlidersHorizontal color={palette.textSecondary} size={16} strokeWidth={2.2} />
+                  <AppText variant="subtitle">Filters</AppText>
+                </View>
+                {hasActiveFilters ? (
+                  <Pressable onPress={handleResetFilters}>
+                    <AppText variant="caption" tone="accent">
+                      Clear all
+                    </AppText>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              <View className="gap-2">
+                <AppText variant="caption" tone="secondary">
+                  Status
+                </AppText>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerClassName="gap-2 pr-3"
+                >
+                  {statusFilters.map((filter) => (
+                    <Chip
+                      key={filter}
+                      label={filter.replace("_", " ")}
+                      selected={statusFilter === filter}
+                      onPress={() => setStatusFilter(filter)}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View className="gap-2">
+                <AppText variant="caption" tone="secondary">
+                  Priority
+                </AppText>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerClassName="gap-2 pr-3"
+                >
+                  {priorityFilters.map((filter) => (
+                    <Chip
+                      key={filter}
+                      label={filter}
+                      selected={priorityFilter === filter}
+                      onPress={() => setPriorityFilter(filter)}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            </Card>
+          </View>
+        }
         ListEmptyComponent={
           <EmptyState
             icon={Sparkles}
             title="Nothing matches those filters"
             description="Try another search, or capture a new idea before it disappears."
             actionLabel="Clear search"
-            onActionPress={() => {
-              setSearchQuery("");
-              setStatusFilter("all");
-              setPriorityFilter("all");
-            }}
+            onActionPress={handleResetFilters}
           />
         }
       />

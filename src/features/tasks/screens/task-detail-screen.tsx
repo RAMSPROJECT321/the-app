@@ -1,4 +1,4 @@
-import { Check, ImagePlus, Plus, Sparkles } from "lucide-react-native";
+import { Check, ChevronLeft, ImagePlus, Plus, Sparkles } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -9,6 +9,7 @@ import { AppText } from "@/components/app-text";
 import { Card } from "@/components/card";
 import { Chip } from "@/components/chip";
 import { EmptyState } from "@/components/empty-state";
+import { IconButton } from "@/components/icon-button";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
 import { TextField } from "@/components/text-field";
@@ -26,7 +27,7 @@ type Props = NativeStackScreenProps<TasksStackParamList, "TaskDetail">;
 const statuses: TaskStatus[] = ["pending", "in_progress", "completed"];
 const priorities: TaskPriority[] = ["low", "medium", "high"];
 
-export const TaskDetailScreen = ({ route }: Props) => {
+export const TaskDetailScreen = ({ navigation, route }: Props) => {
   const { taskId } = route.params;
   const userId = useSessionStore((state) => state.userId);
   const task = useTasksStore((state) => {
@@ -108,6 +109,15 @@ export const TaskDetailScreen = ({ route }: Props) => {
     })();
   };
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate("Tasks");
+  };
+
   return (
     <Screen scrollable={false} contentClassName="gap-0 px-0 pb-0 pt-0">
       <ScrollView
@@ -115,6 +125,13 @@ export const TaskDetailScreen = ({ route }: Props) => {
         contentContainerClassName="gap-6 px-5 pb-40 pt-2"
         showsVerticalScrollIndicator={false}
       >
+        <View className="flex-row items-center gap-3">
+          <IconButton icon={ChevronLeft} onPress={handleBack} />
+          <AppText variant="caption" tone="secondary">
+            Back to tasks
+          </AppText>
+        </View>
+
         <SectionHeader
           eyebrow="Idea detail"
           title={task.title}

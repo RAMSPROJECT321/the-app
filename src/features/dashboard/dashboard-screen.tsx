@@ -3,6 +3,7 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   Archive,
+  ArrowUpRight,
   CheckCircle2,
   SearchCheck,
   ShieldCheck,
@@ -269,6 +270,12 @@ export const DashboardScreen = () => {
                 <AppText tone="secondary" numberOfLines={2}>
                   {task.description}
                 </AppText>
+                <View className="flex-row items-center justify-end gap-1">
+                  <AppText variant="caption" tone="accent">
+                    Open task
+                  </AppText>
+                  <ArrowUpRight color="#0F766E" size={14} strokeWidth={2.2} />
+                </View>
               </Card>
             </Pressable>
           ))}
@@ -295,6 +302,12 @@ export const DashboardScreen = () => {
                 <AppText tone="secondary" numberOfLines={2}>
                   {item.notes ?? "Local secure storage entry"}
                 </AppText>
+                <View className="flex-row items-center justify-end gap-1">
+                  <AppText variant="caption" tone="accent">
+                    Open vault item
+                  </AppText>
+                  <ArrowUpRight color="#0F766E" size={14} strokeWidth={2.2} />
+                </View>
               </Card>
             </Pressable>
           ))}
