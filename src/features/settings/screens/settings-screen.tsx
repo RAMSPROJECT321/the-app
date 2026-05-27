@@ -143,7 +143,7 @@ export const SettingsScreen = () => {
             <View className="flex-1 gap-1">
               <AppText variant="subtitle">Realtime sync</AppText>
               <AppText tone="secondary">
-                Firestore handles document sync. Attachments stay local on this device and do not sync through Firebase.
+                Firestore handles document sync. The top status banner auto-hides, and the current state always remains available here. Attachments stay local on this device and do not sync through Firebase.
               </AppText>
             </View>
           </View>
